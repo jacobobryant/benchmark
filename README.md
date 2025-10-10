@@ -8,12 +8,11 @@ Setup:
 
 1. Start up a postgres docker container with `./postgres.sh` (only if you want to run the benchmarks
    against postgres)
-2. Run `for alias in xtdb1 xtdb2 sqlite postgres; do clj -M:$alias setup; done` (this might take
-   over an hour and could use up >100GB of disk space)
+2. Run `./setup.sh` (this might take over an hour and could use up >100GB of disk space)
 
 Benchmarks:
 
-1. Run `for alias in xtdb1 xtdb2 sqlite postgres; do clj -M:$alias benchmark; done`
+1. Run `for alias in xtdb2 xtdb1 sqlite postgres; do clj -M:$alias benchmark; done`
 
 Notes:
 
