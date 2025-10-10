@@ -1,5 +1,6 @@
 (ns xtdb2
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [core]
@@ -76,6 +77,7 @@
                                   id)]))
                       (core/read-docs "items"))]
     (println "  saving to storage/id-mapping-xtdb2.nippy")
+    (io/make-parents "storage/_")
     (nippy/freeze-to-file "storage/id-mapping-xtdb2.nippy" mapping)))
 
 (defn ingest []

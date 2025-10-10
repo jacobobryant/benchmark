@@ -93,6 +93,7 @@
 
 (defn create-id-mapping []
   (println "create-id-mapping")
+  (io/make-parents "storage/_")
   (nippy/freeze-to-file
    "storage/id-mapping-sqlite.nippy"
    (-> (reduce (fn [[i m] id]
