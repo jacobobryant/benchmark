@@ -49,7 +49,7 @@
   (jdbc/get-datasource
    {:dbtype "postgresql"
     :host "localhost"
-    :port 5432
+    :port 5433
     :dbname "main"
     :user "user"
     :password "abc123"}))
