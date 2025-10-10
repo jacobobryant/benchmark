@@ -95,9 +95,10 @@
                                   (-> (walk/postwalk #(get id-mapping % %) record)
                                       (dissoc :user/timezone)))
                                 batch)]]
-        (printf "  %s batch %d\r" dir i)
+        (println)
+        (printf "\r  %s batch %d" dir i)
         (xt/submit-tx conn [(into [:put-docs table] batch)]))
-      (println "  waiting for indexing to finish...")
+      (println "\n  waiting for indexing to finish...")
       ;; Ideally would poll xtn/status
       (xt/execute-tx conn [[:put-docs "foo" {:xt/id 1}]]))))
 

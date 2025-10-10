@@ -221,7 +221,7 @@
    :list_unsubscribe_post (:item.email/list-unsubscribe-post item)
    :reply_to           (:item.email/reply-to item)
    :maybe_confirmation (bool->int (:item.email/maybe-confirmation item))
-   :candidate_status   (name (:item.direct/candidate-status item))})
+   :candidate_status   (some-> (:item.direct/candidate-status item) name)})
 
 (defn feed-doc->db-row [feed]
   {:id            (:xt/id feed)
@@ -332,7 +332,8 @@
                                   ["ad-clicks" "ad_click" ad-click-doc->db-row]
                                   ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
               [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
-        (printf "  %s batch %d\r" dir i)
+        (println)
+        (printf "\r  %s batch %d" dir i)
         (jdbc/with-transaction [tx conn]
           (doseq [doc batch
                   :let [sql-doc (row-fn (update-ids doc id-mapping))
