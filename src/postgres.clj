@@ -1,68 +1,72 @@
-(ns sqlite
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [core]
-            [taoensso.tufte :as tufte :refer [p profiled]]
-            [next.jdbc :as jdbc])
-  (:import [java.time Instant]
-           [java.util UUID]
-           [java.nio ByteBuffer]))
+(ns postgres
+  (:require
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [core]
+   [next.jdbc :as jdbc]))
 
-(def datasource (jdbc/get-datasource {:dbtype "sqlite" :dbname "storage/db.sqlite"}))
+(def benchmarks
+  [{:id       :get-user-by-email
+    :expected nil
+    :f        #(jdbc/execute! % ["select * from \"user\" where email = ?"
+                                 core/user-email])
+    :n        50}
+   {:id       :get-user-by-id
+    :expected nil
+    :f        #(jdbc/execute! % ["select * from \"user\" where id = ?"
+                                 core/user-id])
+    :n        50}
+   {:id       :get-user-id-by-email
+    :expected nil
+    :f        #(jdbc/execute! % ["select id from \"user\" where email = ?"
+                                 core/user-email])
+    :n        50}
+   {:id       :get-user-email-by-id
+    :expected nil
+    :f        #(jdbc/execute! % ["select email from \"user\" where id = ?"
+                                core/user-id])
+    :n        50}
+   {:id       :get-feeds
+    :expected nil
+    :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
+                                      "from sub s "
+                                      "where s.user_id = ? "
+                                      "and s.feed_id is not null")
+                                 core/user-id])
+    :n        10}
+   {:id       :get-items
+    :expected nil
+    :f        #(jdbc/execute! % [(str "select count(i.id) "
+                                      "from sub s "
+                                      "join item i on i.feed_id = s.feed_id "
+                                      "where s.user_id = ? "
+                                      "and s.feed_id is not null")
+                                 core/user-id])
+    :n        10}])
 
-(defn conn []
+(def datasource
+  (jdbc/get-datasource
+   {:dbtype "postgresql"
+    :host "localhost"
+    :port 5432
+    :dbname "main"
+    :user "user"
+    :password "abc123"}))
+
+(defn get-conn []
   (jdbc/get-connection datasource))
 
-(defn instant->epoch [inst]
-  (when inst
-    (.getEpochSecond ^Instant inst)))
-
-(defn update-ids [doc]
-  (into {}
-        (map (fn [[k v]]
-               [k (cond
-                    (#{:xt/id
-                       :sub/user
-                       :sub.feed/feed
-                       :item.feed/feed
-                       :item.email/sub
-                       :user-item/user
-                       :user-item/item
-                       :digest/user
-                       :digest/subject
-                       :digest/ad
-                       :skip/user
-                       :ad/user
-                       :ad.click/user
-                       :ad.click/ad
-                       :ad.credit/ad}
-                     k)
-                    (core/uuid->int v)
-
-                    (#{:digest/icymi :digest/discover :bulk-send/digests} k)
-                    (mapv core/uuid->int v)
-
-                    (#{:skip/items :skip/clicked} k)
-                    (into #{} (map core/uuid->int) v)
-
-                    (inst? v)
-                    (instant->epoch v)
-
-                    :else v)]))
-        doc))
+(defn create-tables []
+  (with-open [conn (get-conn)]
+    (doseq [schema (str/split (slurp (io/resource "postgres-schema.sql")) #";")]
+      (let [schema (str/trim schema)]
+        (when (seq schema)
+          (println schema)
+          (jdbc/execute! conn [schema]))))))
 
 (defn edn-str [x]
   (when x (pr-str x)))
-
-(defn uuid->blob [^UUID u]
-  (when u
-    (let [bb (ByteBuffer/allocate 16)]
-      (.putLong bb (.getMostSignificantBits u))
-      (.putLong bb (.getLeastSignificantBits u))
-      (.array bb))))
-
-(defn bool->int [b]
-  (when (some? b) (if b 1 0)))
 
 (defn user-doc->db-row [user]
   {:id                 (:xt/id user)
@@ -70,10 +74,9 @@
    :roles              (edn-str (:user/roles user))
    :joined_at          (:user/joined-at user)
    :digest_days        (edn-str (:user/digest-days user))
-   :send_digest_at     (:user/send-digest-at user)
    :digest_last_sent   (:user/digest-last-sent user)
-   :from_the_sample    (if (:user/from-the-sample user) 1 0)
-   :use_original_links (if (:user/use-original-links user) 1 0)
+   :from_the_sample    (:user/from-the-sample user)
+   :use_original_links (:user/use-original-links user)
    :suppressed_at      (:user/suppressed-at user)
    :email_username     (:user/email-username user)
    :customer_id        (:user/customer-id user)
@@ -100,7 +103,7 @@
    :url                (:item/url item)
    :redirect_urls      (edn-str (:item/redirect-urls item))
    :content            (:item/content item)
-   :content_key        (uuid->blob (:item/content-key item))
+   :content_key        (:item/content-key item)
    :published_at       (:item/published-at item)
    :excerpt            (:item/excerpt item)
    :author_name        (:item/author-name item)
@@ -111,7 +114,7 @@
    :byline             (:item/byline item)
    :length             (:item/length item)
    :image_url          (:item/image-url item)
-   :paywalled          (bool->int (:item/paywalled item))
+   :paywalled          (:item/paywalled item)
    :kind               (cond
                          (contains? item :item.feed/feed) "feed"
                          (contains? item :item.email/sub) "email"
@@ -120,12 +123,12 @@
    :feed_id            (:item.feed/feed item)
    :guid               (:item.feed/guid item)
    :email_sub_id       (:item.email/sub item)
-   :raw_content_key    (uuid->blob (:item.email/raw-content-key item))
+   :raw_content_key    (:item.email/raw-content-key item)
    :list_unsubscribe   (:item.email/list-unsubscribe item)
    :list_unsubscribe_post (:item.email/list-unsubscribe-post item)
    :reply_to           (:item.email/reply-to item)
-   :maybe_confirmation (bool->int (:item.email/maybe-confirmation item))
-   :candidate_status   (:item.direct/candidate-status item)})
+   :maybe_confirmation (:item.email/maybe-confirmation item)
+   :candidate_status   (some-> (:item.direct/candidate-status item) name)})
 
 (defn feed-doc->db-row [feed]
   {:id            (:xt/id feed)
@@ -164,20 +167,20 @@
    :title          (:ad/title ad)
    :description    (:ad/description ad)
    :image_url      (:ad/image-url ad)
-   :paused         (bool->int (:ad/paused ad))
-   :payment_failed (bool->int (:ad/payment-failed ad))
+   :paused         (:ad/paused ad)
+   :payment_failed (:ad/payment-failed ad)
    :customer_id    (:ad/customer-id ad)
    :session_id     (:ad/session-id ad)
    :payment_method (:ad/payment-method ad)
    :card_details   (edn-str (:ad/card-details ad))})
 
 (defn ad-click-doc->db-row [ad-click]
-  {:id        (:xt/id ad-click)
-   :user_id   (:ad.click/user ad-click)
-   :ad_id     (:ad.click/ad ad-click)
+  {:id         (:xt/id ad-click)
+   :user_id    (:ad.click/user ad-click)
+   :ad_id      (:ad.click/ad ad-click)
    :created_at (:ad.click/created-at ad-click)
-   :cost      (:ad.click/cost ad-click)
-   :source    (some-> (:ad.click/source ad-click) name)})
+   :cost       (:ad.click/cost ad-click)
+   :source     (some-> (:ad.click/source ad-click) name)})
 
 (defn ad-credit-doc->db-row [ad-credit]
   {:id            (:xt/id ad-credit)
@@ -187,75 +190,60 @@
    :created_at    (:ad.credit/created-at ad-credit)
    :charge_status (some-> (:ad.credit/charge-status ad-credit) name)})
 
-(defn insert! [c table doc]
-  (jdbc/execute! c
-                 (into [(str "INSERT INTO " table " (" (str/join ", " (mapv name (keys doc)))
-                             ") VALUES (" (str/join ", " (repeat (count doc) "?")) ")")]
-                       (vals doc))))
+(defn insert [table doc]
+  (into [(str "INSERT INTO " table " (" (str/join ", " (mapv name (keys doc)))
+              ") VALUES (" (str/join ", " (repeat (count doc) "?")) ")")]
+        (vals doc)))
 
-(defn create-tables []
-  (with-open [conn (conn)]
-    (doseq [schema (str/split (slurp (io/resource "sqlite-schema.sql")) #";")]
-      (println schema)
-      (jdbc/execute! conn [schema]))))
+(defn convert-stuff [m]
+  (into {}
+        (map (fn [[k v]]
+               [k (cond
+                    (instance? java.time.Instant v)
+                    (java.sql.Timestamp/from v)
+
+                    (string? v)
+                    (str/replace v "\u0000" "")
+
+                    :else
+                    v)]))
+        m))
 
 (defn ingest []
-  (with-open [conn (conn)]
-    (jdbc/with-transaction [tx conn]
-      (doseq [[dir table row-fn] [["users" "user" user-doc->db-row]
-                                  ["subs" "sub" sub-doc->db-row]
-                                  ["feeds" "feed" feed-doc->db-row]
-                                  ["items" "item" item-doc->db-row]
-                                  ["user-items" "user_item" user-item-doc->db-row]
-                                  ["ads" "ad" ad-doc->db-row]
-                                  ["ad-clicks" "ad_click" ad-click-doc->db-row]
-                                  ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
-              doc (core/read-docs dir)
-              :let [doc (row-fn (update-ids doc))]]
-        (insert! tx table doc)))))
+  (println "ingest")
+  (with-open [conn (get-conn)]
+    (doseq [[dir table row-fn] [["users" "\"user\"" user-doc->db-row]
+                                ["subs" "sub" sub-doc->db-row]
+                                ["feeds" "feed" feed-doc->db-row]
+                                ["items" "item" item-doc->db-row]
+                                ["user-items" "user_item" user-item-doc->db-row]
+                                ["ads" "ad" ad-doc->db-row]
+                                ["ad-clicks" "ad_click" ad-click-doc->db-row]
+                                ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
+            [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
+      (println "  table" table "batch" i)
+      (jdbc/with-transaction [tx conn]
+        (doseq [doc batch
+                :let [sql (insert table (convert-stuff (row-fn doc)))]]
+          (try
+            (jdbc/execute! tx sql)
+            (catch Exception e
+              (pprint/pprint sql)
+              (pprint/pprint doc)
+              (throw e))))))))
 
-(defn run-tests [c]
-  (dotimes [_ 50]
-    (p :get-user-by-email
-      (jdbc/execute! c ["select * from user where email = ?"
-                        core/user-email]))
-    (p :get-user-by-id
-      (jdbc/execute! c ["select * from user where id = ?"
-                        core/user-id-int]))
-    (p :get-user-id-by-email
-      (jdbc/execute! c ["select id from user where email = ?"
-                        core/user-email]))
-    (p :get-user-email-by-id
-      (jdbc/execute! c ["select email from user where id = ?"
-                        core/user-id-int])))
-  (dotimes [_ 10]
-    (p :get-feeds
-      (jdbc/execute! c [(str "select count(s.feed_id) "
-                             "from sub s "
-                             "where s.user_id = ? "
-                             "and s.feed_id is not null")
-                        core/user-id-int]))
-    (p :get-items
-      (jdbc/execute! c [(str "select count(i.id) "
-                             "from sub s "
-                             "join item i on i.feed_id = s.feed_id "
-                             "where s.user_id = ? "
-                             "and s.feed_id is not null")
-                        core/user-id-int]))))
 
-(defn main* [conn]
-  (run-tests conn) ; warm up
-  (let [[_ pstats] (profiled {} (run-tests conn))]
-    (println
-     (tufte/format-pstats @pstats))))
-
-(defn -main []
-  (let [c (conn)]
-    (main* c)
-    (.close c)
-    (System/exit 0)))
-
-(comment
+(defn setup []
   (create-tables)
-  (ingest)
-  )
+  (ingest))
+
+(defn benchmark []
+  (with-open [conn (get-conn)]
+    (core/test-benchmarks conn benchmarks) ; warm up
+    (core/run-benchmarks conn benchmarks)))
+
+(defn -main [command]
+  (case command
+    "setup" (setup)
+    "benchmark" (benchmark))
+  (System/exit 0))
