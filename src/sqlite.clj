@@ -92,21 +92,22 @@
           doc))
 
 (defn create-id-mapping []
-  (println "create-id-mapping")
-  (io/make-parents "storage/_")
-  (nippy/freeze-to-file
-   "storage/id-mapping-sqlite.nippy"
-   (-> (reduce (fn [[i m] id]
-                 (if (contains? m id)
-                   [i m]
-                   [(inc i) (assoc! m id i)]))
-               [0 (transient {})]
-               (for [{:keys [dir]} core/input-info
-                     doc (core/read-docs dir)
-                     id (get-ids doc)]
-                 id))
-       second
-       persistent!)))
+  (when-not (.exists (io/file "storage/id-mapping-sqlite.nippy"))
+    (println "create-id-mapping")
+    (io/make-parents "storage/_")
+    (nippy/freeze-to-file
+     "storage/id-mapping-sqlite.nippy"
+     (-> (reduce (fn [[i m] id]
+                   (if (contains? m id)
+                     [i m]
+                     [(inc i) (assoc! m id i)]))
+                 [0 (transient {})]
+                 (for [{:keys [dir]} core/input-info
+                       doc (core/read-docs dir)
+                       id (get-ids doc)]
+                   id))
+         second
+         persistent!))))
 
 (defn instant->epoch [inst]
   (when inst

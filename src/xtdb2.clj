@@ -64,21 +64,22 @@
   "Creates a map of <old uuid> -> <new uuid> which will be used by ingest to assign :xt/id values
    with better locality."
   []
-  (println "create-id-mapping")
-  (let [mapping (into {} (concat
-                          (for [{:keys [xt/id sub/user]} (core/read-docs "subs")]
-                            [id (uuid-with-prefix user id)])
-                          (for [{:keys [xt/id user-item/user]} (core/read-docs "user-items")]
-                            [id (uuid-with-prefix user id)])))
-        mapping (into mapping
-                      (map (fn [{:keys [xt/id item.feed/feed item.email/sub]}]
-                             [id (uuid-with-prefix
-                                  (or feed sub #uuid "00000000-0000-0000-0000-000000000000")
-                                  id)]))
-                      (core/read-docs "items"))]
-    (println "  saving to storage/id-mapping-xtdb2.nippy")
-    (io/make-parents "storage/_")
-    (nippy/freeze-to-file "storage/id-mapping-xtdb2.nippy" mapping)))
+  (when-not (.exists (io/file "storage/id-mapping-xtdb2.nippy"))
+    (println "create-id-mapping")
+    (let [mapping (into {} (concat
+                            (for [{:keys [xt/id sub/user]} (core/read-docs "subs")]
+                              [id (uuid-with-prefix user id)])
+                            (for [{:keys [xt/id user-item/user]} (core/read-docs "user-items")]
+                              [id (uuid-with-prefix user id)])))
+          mapping (into mapping
+                        (map (fn [{:keys [xt/id item.feed/feed item.email/sub]}]
+                               [id (uuid-with-prefix
+                                    (or feed sub #uuid "00000000-0000-0000-0000-000000000000")
+                                    id)]))
+                        (core/read-docs "items"))]
+      (println "  saving to storage/id-mapping-xtdb2.nippy")
+      (io/make-parents "storage/_")
+      (nippy/freeze-to-file "storage/id-mapping-xtdb2.nippy" mapping))))
 
 (defn ingest []
   (println "ingest")
