@@ -58,7 +58,8 @@
 (defn create-tables []
   (println "creating tables")
   (with-open [conn (get-conn)]
-    (doseq [schema (str/split (slurp (io/resource "sqlite-schema.sql")) #";")]
+    (doseq [schema (str/split (slurp (io/resource "sqlite-schema.sql")) #";")
+            :when (not-empty (str/trim schema))]
       (jdbc/execute! conn [schema]))))
 
 (defn get-ids [doc]

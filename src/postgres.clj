@@ -59,11 +59,9 @@
 
 (defn create-tables []
   (with-open [conn (get-conn)]
-    (doseq [schema (str/split (slurp (io/resource "postgres-schema.sql")) #";")]
-      (let [schema (str/trim schema)]
-        (when (seq schema)
-          (println schema)
-          (jdbc/execute! conn [schema]))))))
+    (doseq [schema (str/split (slurp (io/resource "postgres-schema.sql")) #";")
+            :when (not-empty (str/trim schema))]
+      (jdbc/execute! conn [schema]))))
 
 (defn edn-str [x]
   (when x (pr-str x)))
