@@ -219,7 +219,7 @@
                                 ["ad-clicks" "ad_click" ad-click-doc->db-row]
                                 ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
             [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
-      (println "  table" table "batch" i)
+      (printf "  %s batch %d\r" dir i)
       (jdbc/with-transaction [tx conn]
         (doseq [doc batch
                 :let [sql (insert table (convert-stuff (row-fn doc)))]]
@@ -232,10 +232,12 @@
 
 
 (defn setup []
+  (println "setting up postgres")
   (create-tables)
   (ingest))
 
 (defn benchmark []
+  (println "benchmarking postgres")
   (with-open [conn (get-conn)]
     (core/test-benchmarks conn benchmarks) ; warm up
     (core/run-benchmarks conn benchmarks)))

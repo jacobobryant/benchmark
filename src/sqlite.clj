@@ -330,7 +330,7 @@
                                   ["ad-clicks" "ad_click" ad-click-doc->db-row]
                                   ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
               [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
-        (println "  table" table "batch" i)
+        (printf "  %s batch %d\r" dir i)
         (jdbc/with-transaction [tx conn]
           (doseq [doc batch
                   :let [sql-doc (row-fn (update-ids doc id-mapping))
@@ -343,11 +343,13 @@
                 (throw e)))))))))
 
 (defn setup []
+  (println "setting up sqlite")
   (create-tables)
   (create-id-mapping)
   (ingest))
 
 (defn benchmark []
+  (println "benchmarking sqlite")
   (with-open [conn (get-conn)]
     (core/test-benchmarks conn benchmarks) ; warm up
     (core/run-benchmarks conn benchmarks)))

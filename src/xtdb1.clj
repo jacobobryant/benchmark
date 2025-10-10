@@ -62,19 +62,21 @@
       :xtdb/tx-log         (kv-store-fn "tx-log")})))
 
 (defn setup []
+  (println "setting up XTDB 1")
   (println "ingest")
   (with-open [node (start-node)]
     (doseq [{:keys [dir]} core/input-info
             [i batch] (->> (core/read-docs dir)
                            (partition-all 1000)
                            (map-indexed vector))]
-      (println " " dir "batch" i)
+      (printf "  %s batch %d\r" dir i)
       (xt/submit-tx node (for [doc batch]
-                           [::xt/put doc]))
-      (println "  waiting for indexing to finish...")
-      (xt/sync node))))
+                           [::xt/put doc])))
+    (println "  waiting for indexing to finish...")
+    (xt/sync node)))
 
 (defn benchmark []
+  (println "benchmarking XTDB 1")
   (with-open [node (start-node)
               db (xt/open-db node)]
     (core/test-benchmarks db benchmarks) ; warm up

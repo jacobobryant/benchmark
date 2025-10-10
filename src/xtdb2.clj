@@ -92,18 +92,19 @@
                                   (-> (walk/postwalk #(get id-mapping % %) record)
                                       (dissoc :user/timezone)))
                                 batch)]]
-        (println " " dir "batch" i)
+        (printf "  %s batch %d\r" dir i)
         (xt/submit-tx conn [(into [:put-docs table] batch)]))
-      (println "  ingest done")
       (println "  waiting for indexing to finish...")
       ;; Ideally would poll xtn/status
       (xt/execute-tx conn [[:put-docs "foo" {:xt/id 1}]]))))
 
 (defn setup []
+  (println "setting up XTDB 2")
   (create-id-mapping)
   (ingest))
 
 (defn benchmark []
+  (println "benchmarking XTDB 2")
   (with-open [node (start-node)
               conn (get-conn node)]
     (core/test-benchmarks conn benchmarks) ; warm up
