@@ -6,8 +6,8 @@
 
 (def expected-user
   {:user/email-username "Sn0a6"
-   :user/digest-last-sent #xt/zdt "2025-09-28T18:07:26.604435Z[UTC]"
-   :user/send-digest-at #xt/time "08:00"
+   :user/digest-last-sent (java.time.ZonedDateTime/parse "2025-09-28T18:07:26.604435Z[UTC]")
+   :user/send-digest-at (java.time.LocalTime/parse "08:00")
    :user/roles #{:admin}
    :user/customer-id "JIKApV1OsDDIp9uKRb"
    :user/email "w6qhyZcYmAcXOoLWrq"

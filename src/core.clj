@@ -69,7 +69,14 @@
 (defn run-benchmarks [conn benchmarks]
   (let [[_ pstats] (tufte/profiled
                     {}
-                    (doseq [{:keys [id f n]} benchmarks
+                    (doseq [{:keys [id f n] :or {n 10}} benchmarks
                             _ (range n)]
                       (p id (f conn))))]
     (println (tufte/format-pstats @pstats))))
+
+(defn check-benchmark [conn benchmarks id]
+  ((->> benchmarks
+        (filterv #(= (:id %) id))
+        first
+        :f)
+   conn))
