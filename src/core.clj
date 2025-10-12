@@ -55,10 +55,9 @@
                   (dissoc doc :user/timezone))))
          (nippy/freeze-to-file output-file))))
 
-;; TODO
 (def user-id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f")
-(def user-email "jacob@thesample.ai")
-(def user-id-int 1727)
+(def user-email "w6qhyZcYmAcXOoLWrq")
+(def user-id-int 4399)
 
 (defn test-benchmarks [conn benchmarks]
   (doseq [{:keys [id f expected]} benchmarks

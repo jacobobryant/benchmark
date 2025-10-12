@@ -71,6 +71,7 @@
                            (partition-all 1000)
                            (map-indexed vector))]
       (printf "\r  %s batch %d" dir i)
+      (flush)
       (xt/submit-tx node (for [doc batch]
                            [::xt/put doc])))
     (println "  waiting for indexing to finish...")

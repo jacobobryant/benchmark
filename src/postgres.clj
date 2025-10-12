@@ -221,6 +221,7 @@
                                 ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
             [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
       (printf "\r  %s batch %d" dir i)
+      (flush)
       (jdbc/with-transaction [tx conn]
         (doseq [doc batch
                 :let [sql (insert table (convert-stuff (row-fn doc)))]]

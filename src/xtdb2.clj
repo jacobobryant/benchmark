@@ -97,6 +97,7 @@
                                       (dissoc :user/timezone)))
                                 batch)]]
         (printf "\r  %s batch %d" dir i)
+        (flush)
         (xt/submit-tx conn [(into [:put-docs table] batch)]))
       (println "\n  waiting for indexing to finish...")
       ;; Ideally would poll xtn/status
