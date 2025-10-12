@@ -11,29 +11,45 @@
    [java.time Instant]
    [java.util UUID]))
 
+(def expected-user #:user{:timezone nil,
+                          :cancel_at nil,
+                          :plan nil,
+                          :email_username "Sn0a6",
+                          :id 4399,
+                          :customer_id "JIKApV1OsDDIp9uKRb",
+                          :send_digest_at "08:00",
+                          :joined_at nil,
+                          :digest_last_sent 1759082846,
+                          :roles "#{:admin}",
+                          :email "w6qhyZcYmAcXOoLWrq",
+                          :from_the_sample 0,
+                          :suppressed_at nil,
+                          :digest_days "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
+                          :use_original_links 0})
+
 (def benchmarks
   [{:id       :get-user-by-email
-    :expected nil
+    :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from user where email = ?"
                                  core/user-email])
     :n        50}
    {:id       :get-user-by-id
-    :expected nil
+    :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from user where id = ?"
                                 core/user-id-int])
     :n        50}
    {:id       :get-user-id-by-email
-    :expected nil
+    :expected core/user-id-int
     :f        #(jdbc/execute! % ["select id from user where email = ?"
                                  core/user-email])
     :n        50}
    {:id       :get-user-email-by-id
-    :expected nil
+    :expected core/user-email
     :f        #(jdbc/execute! % ["select email from user where id = ?"
                                  core/user-id-int])
     :n        50}
    {:id       :get-feeds
-    :expected nil
+    :expected [{(keyword "count(s.feed_id)") 162}]
     :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
                                       "from sub s "
                                       "where s.user_id = ? "
@@ -41,7 +57,7 @@
                                  core/user-id-int])
     :n        10}
    {:id       :get-items
-    :expected nil
+    :expected [{(keyword "count(i.id)") 11284}]
     :f        #(jdbc/execute! % [(str "select count(i.id) "
                                       "from sub s "
                                       "join item i on i.feed_id = s.feed_id "
