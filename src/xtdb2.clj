@@ -38,13 +38,13 @@
                           core/user-id])
     :n        50}
    {:id       :get-feeds
-    :expected nil
+    :expected [{:xt/column-1 162}]
     :f        #(xt/q % [(str "select count(sub$feed$feed) from subs "
                              "where sub$user = ? and sub$feed$feed is not null")
                           core/user-id])
     :n        10}
    {:id       :get-items
-    :expected nil
+    :expected [{:xt/column-1 11284}]
     :f        #(xt/q % [(str "select count(i._id) "
                              "from subs s "
                              "join items i on i.item$feed$feed = s.sub$feed$feed "

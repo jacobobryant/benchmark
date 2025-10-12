@@ -4,9 +4,20 @@
    [core]
    [xtdb.api :as xt]))
 
+(def expected-user
+  {:user/email-username "Sn0a6"
+   :user/digest-last-sent #xt/zdt "2025-09-28T18:07:26.604435Z[UTC]"
+   :user/send-digest-at #xt/time "08:00"
+   :user/roles #{:admin}
+   :user/customer-id "JIKApV1OsDDIp9uKRb"
+   :user/email "w6qhyZcYmAcXOoLWrq"
+   :user/digest-days #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}
+   :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f"
+   :user/use-original-links false})
+
 (def benchmarks
   [{:id       :get-user-by-email
-    :expected nil
+    :expected [expected-user]
     :f        #(xt/q %
                      '{:find [(pull user [*])]
                        :in [email]
@@ -14,7 +25,7 @@
                      core/user-email)
     :n        50}
    {:id       :get-user-by-id
-    :expected nil
+    :expected [expected-user]
     :f        #(xt/entity % core/user-id)
     :n        50}
    {:id       :get-user-id-by-email
