@@ -8,7 +8,7 @@ Setup:
 
 1. Start up a postgres docker container with `./postgres.sh` (only if you want to run the benchmarks
    against postgres)
-2. Run `./setup.sh` (this might take over an hour and could use up >100GB of disk space)
+2. Run `./setup.sh` (this might take several hours and could use up >150GB of disk space)
 
 Benchmarks:
 
