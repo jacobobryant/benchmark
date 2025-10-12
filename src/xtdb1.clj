@@ -6,7 +6,7 @@
 
 (def expected-user
   {:user/email-username "Sn0a6"
-   :user/digest-last-sent (java.time.Instant/parse "2025-09-28T18:07:26.604435Z")
+   :user/digest-last-sent (java.time.Instant/parse "2025-09-28T18:07:26.604435965Z")
    :user/send-digest-at (java.time.LocalTime/parse "08:00")
    :user/roles #{:admin}
    :user/customer-id "JIKApV1OsDDIp9uKRb"
