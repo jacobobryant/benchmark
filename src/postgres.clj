@@ -18,17 +18,17 @@
                                  core/user-id])
     :n        50}
    {:id       :get-user-id-by-email
-    :expected nil
+    :expected [{:user/id core/user-id}]
     :f        #(jdbc/execute! % ["select id from \"user\" where email = ?"
                                  core/user-email])
     :n        50}
    {:id       :get-user-email-by-id
-    :expected nil
+    :expected [{:user/email core/user-email}]
     :f        #(jdbc/execute! % ["select email from \"user\" where id = ?"
                                 core/user-id])
     :n        50}
    {:id       :get-feeds
-    :expected nil
+    :expected [{(keyword "count(s.feed_id)") 162}]
     :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
                                       "from sub s "
                                       "where s.user_id = ? "
@@ -36,7 +36,7 @@
                                  core/user-id])
     :n        10}
    {:id       :get-items
-    :expected nil
+    :expected [{(keyword "count(i.id)") 11284}]
     :f        #(jdbc/execute! % [(str "select count(i.id) "
                                       "from sub s "
                                       "join item i on i.feed_id = s.feed_id "

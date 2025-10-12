@@ -18,21 +18,21 @@
     :f        #(xt/entity % core/user-id)
     :n        50}
    {:id       :get-user-id-by-email
-    :expected nil
+    :expected #{[core/user-id]}
     :f        #(xt/q % '{:find [user]
                          :in [email]
                          :where [[user :user/email email]]}
                      core/user-email)
     :n        50}
    {:id       :get-user-email-by-id
-    :expected nil
+    :expected #{[core/user-email]}
     :f        #(xt/q % '{:find [email]
                          :in [user]
                          :where [[user :user/email email]]}
                      core/user-id)
     :n        50}
    {:id       :get-feeds
-    :expected nil
+    :expected #{[162]}
     :f        #(xt/q %
                      '{:find [(count feed)]
                        :in [user]
@@ -41,7 +41,7 @@
                      core/user-id)
     :n        10}
    {:id       :get-items
-    :expected nil
+    :expected #{[11284]}
     :f        #(xt/q %
                      '{:find [(count item)]
                        :in [user]
