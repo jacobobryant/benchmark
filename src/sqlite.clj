@@ -39,12 +39,12 @@
                                 core/user-id-int])
     :n        50}
    {:id       :get-user-id-by-email
-    :expected core/user-id-int
+    :expected [{:user/id core/user-id-int}]
     :f        #(jdbc/execute! % ["select id from user where email = ?"
                                  core/user-email])
     :n        50}
    {:id       :get-user-email-by-id
-    :expected core/user-email
+    :expected [{:user/email core/user-email}]
     :f        #(jdbc/execute! % ["select email from user where id = ?"
                                  core/user-id-int])
     :n        50}
