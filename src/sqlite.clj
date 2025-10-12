@@ -323,6 +323,7 @@
   (println "ingest")
   (let [id-mapping (nippy/thaw-from-file "storage/id-mapping-sqlite.nippy")]
     (with-open [conn (get-conn)]
+      (println)
       (doseq [[dir table row-fn] [["users" "user" user-doc->db-row]
                                   ["subs" "sub" sub-doc->db-row]
                                   ["feeds" "feed" feed-doc->db-row]
@@ -332,7 +333,6 @@
                                   ["ad-clicks" "ad_click" ad-click-doc->db-row]
                                   ["ad-credits" "ad_credit" ad-credit-doc->db-row]]
               [i batch] (map-indexed vector (partition-all 1000 (core/read-docs dir)))]
-        (println)
         (printf "\r  %s batch %d" dir i)
         (jdbc/with-transaction [tx conn]
           (doseq [doc batch

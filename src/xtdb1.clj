@@ -65,11 +65,12 @@
   (println "setting up XTDB 1")
   (println "ingest")
   (with-open [node (start-node)]
+    (println)
     (doseq [{:keys [dir]} core/input-info
             [i batch] (->> (core/read-docs dir)
                            (partition-all 1000)
                            (map-indexed vector))]
-      (printf "  %s batch %d\r" dir i)
+      (printf "\r  %s batch %d" dir i)
       (xt/submit-tx node (for [doc batch]
                            [::xt/put doc])))
     (println "  waiting for indexing to finish...")

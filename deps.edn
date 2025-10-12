@@ -1,5 +1,6 @@
 {:paths ["src"]
- :deps {com.taoensso/tufte                {:mvn/version "2.6.3"}
+ :deps {org.clojure/clojure               {:mvn/version "1.12.3"}
+        com.taoensso/tufte                {:mvn/version "2.6.3"}
         com.taoensso/nippy                {:mvn/version "3.2.0"}
         org.xerial/sqlite-jdbc            {:mvn/version "3.50.3.0"}
         org.postgresql/postgresql         {:mvn/version "42.7.7"}

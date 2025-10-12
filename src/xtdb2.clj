@@ -86,6 +86,7 @@
   (let [id-mapping (nippy/thaw-from-file "storage/id-mapping-xtdb2.nippy")]
     (with-open [node (start-node)
                 conn (get-conn node)]
+      (println)
       (doseq [{:keys [dir]} core/input-info
               [i batch] (->> (core/read-docs dir)
                              (partition-all 1000)
@@ -95,7 +96,6 @@
                                   (-> (walk/postwalk #(get id-mapping % %) record)
                                       (dissoc :user/timezone)))
                                 batch)]]
-        (println)
         (printf "\r  %s batch %d" dir i)
         (xt/submit-tx conn [(into [:put-docs table] batch)]))
       (println "\n  waiting for indexing to finish...")
