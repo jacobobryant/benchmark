@@ -22,6 +22,11 @@ Notes:
   However data ingestion gradually got slower and slower, and after ~10 hours it had slowed to a
   crawl with still ~1 million entities left to go, so I gave up. Maybe an actual Datomic Pro
   instance would fare better.
+- the xtdb2 and sqlite benchmarks remap document IDs: sqlite changes them from uuids to ints since
+  sqlite doesn't have a native uuid type (though maybe blobs are fine?), while the xtdb2 benchmark
+  keeps them as uuids but updates the prefixes to get better locality. Not sure if doing int IDs for
+  xtdb2 would help (from being a smaller data type?) or hurt (from worse locality). I'm guessing the
+  latter.
 
 
 Document counts:
