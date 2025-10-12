@@ -25,7 +25,7 @@
                      core/user-email)
     :n        50}
    {:id       :get-user-by-id
-    :expected #{[expected-user]}
+    :expected expected-user
     :f        #(xt/entity % core/user-id)
     :n        50}
    {:id       :get-user-id-by-email
