@@ -22,27 +22,22 @@
 (def benchmarks
   [{:id       :get-user-by-email
     :expected [expected-user]
-    :f        #(xt/q % ["select * from users where user$email = ?" core/user-email])
-    :n        50}
+    :f        #(xt/q % ["select * from users where user$email = ?" core/user-email])}
    {:id       :get-user-by-id
     :expected [expected-user]
-    :f        #(xt/q % ["select * from users where _id = ?" core/user-id])
-    :n        50}
+    :f        #(xt/q % ["select * from users where _id = ?" core/user-id])}
    {:id       :get-user-id-by-email
     :expected [{:xt/id core/user-id}]
-    :f        #(xt/q % ["select _id from users where user$email = ?" core/user-email])
-    :n        50}
+    :f        #(xt/q % ["select _id from users where user$email = ?" core/user-email])}
    {:id       :get-user-email-by-id
     :expected [{:user/email core/user-email}]
     :f        #(xt/q % ["select user$email from users where _id = ?"
-                          core/user-id])
-    :n        50}
+                          core/user-id])}
    {:id       :get-feeds
     :expected [{:xt/column-1 162}]
     :f        #(xt/q % [(str "select count(sub$feed$feed) from subs "
                              "where sub$user = ? and sub$feed$feed is not null")
-                          core/user-id])
-    :n        10}
+                          core/user-id])}
    {:id       :get-items
     :expected [{:xt/column-1 11284}]
     :f        #(xt/q % [(str "select count(i._id) "
@@ -50,8 +45,7 @@
                              "join items i on i.item$feed$feed = s.sub$feed$feed "
                              "where s.sub$user = ? "
                              "and s.sub$feed$feed is not null")
-                        core/user-id])
-    :n        1}])
+                        core/user-id])}])
 
 (defn start-node []
   (xtn/start-node
