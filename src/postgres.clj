@@ -27,31 +27,26 @@
   [{:id       :get-user-by-email
     :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from \"user\" where email = ?"
-                                 core/user-email])
-    :n        50}
+                                 core/user-email])}
    {:id       :get-user-by-id
     :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from \"user\" where id = ?"
-                                 core/user-id])
-    :n        50}
+                                 core/user-id])}
    {:id       :get-user-id-by-email
     :expected [{:user/id core/user-id}]
     :f        #(jdbc/execute! % ["select id from \"user\" where email = ?"
-                                 core/user-email])
-    :n        50}
+                                 core/user-email])}
    {:id       :get-user-email-by-id
     :expected [{:user/email core/user-email}]
     :f        #(jdbc/execute! % ["select email from \"user\" where id = ?"
-                                core/user-id])
-    :n        50}
+                                core/user-id])}
    {:id       :get-feeds
     :expected [{:count 162}]
     :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
                                       "from sub s "
                                       "where s.user_id = ? "
                                       "and s.feed_id is not null")
-                                 core/user-id])
-    :n        10}
+                                 core/user-id])}
    {:id       :get-items
     :expected [{:count 11284}]
     :f        #(jdbc/execute! % [(str "select count(i.id) "
@@ -59,8 +54,7 @@
                                       "join item i on i.feed_id = s.feed_id "
                                       "where s.user_id = ? "
                                       "and s.feed_id is not null")
-                                 core/user-id])
-    :n        10}])
+                                 core/user-id])}])
 
 (def datasource
   (jdbc/get-datasource

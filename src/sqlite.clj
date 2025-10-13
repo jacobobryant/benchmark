@@ -28,43 +28,38 @@
                           :use_original_links 0})
 
 (def benchmarks
-  [{:id       :get-user-by-email
-    :expected [expected-user]
-    :f        #(jdbc/execute! % ["select * from user where email = ?"
-                                 core/user-email])
-    :n        50}
-   {:id       :get-user-by-id
-    :expected [expected-user]
-    :f        #(jdbc/execute! % ["select * from user where id = ?"
-                                core/user-id-int])
-    :n        50}
-   {:id       :get-user-id-by-email
-    :expected [{:user/id core/user-id-int}]
-    :f        #(jdbc/execute! % ["select id from user where email = ?"
-                                 core/user-email])
-    :n        50}
-   {:id       :get-user-email-by-id
-    :expected [{:user/email core/user-email}]
-    :f        #(jdbc/execute! % ["select email from user where id = ?"
-                                 core/user-id-int])
-    :n        50}
-   {:id       :get-feeds
-    :expected [{(keyword "count(s.feed_id)") 162}]
-    :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
-                                      "from sub s "
-                                      "where s.user_id = ? "
-                                      "and s.feed_id is not null")
-                                 core/user-id-int])
-    :n        10}
-   {:id       :get-items
-    :expected [{(keyword "count(i.id)") 11284}]
-    :f        #(jdbc/execute! % [(str "select count(i.id) "
-                                      "from sub s "
-                                      "join item i on i.feed_id = s.feed_id "
-                                      "where s.user_id = ? "
-                                      "and s.feed_id is not null")
-                                 core/user-id-int])
-    :n        10}])
+  (mapv
+   (fn [benchmark]
+     (cond-> benchmark
+       (not (:f benchmark))
+       (assoc :f #(jdbc/execute! % (:query benchmark)))))
+   [{:id       :get-user-by-email
+     :expected [expected-user]
+     :query    ["select * from user where email = ?" core/user-email]}
+    {:id       :get-user-by-id
+     :expected [expected-user]
+     :query    ["select * from user where id = ?" core/user-id-int]}
+    {:id       :get-user-id-by-email
+     :expected [{:user/id core/user-id-int}]
+     :query    ["select id from user where email = ?" core/user-email]}
+    {:id       :get-user-email-by-id
+     :expected [{:user/email core/user-email}]
+     :query    ["select email from user where id = ?" core/user-id-int]}
+    {:id       :get-feeds
+     :expected [{(keyword "count(s.feed_id)") 162}]
+     :query    [(str "select count(s.feed_id) "
+                     "from sub s "
+                     "where s.user_id = ? "
+                     "and s.feed_id is not null")
+                core/user-id-int]}
+    {:id       :get-items
+     :expected [{(keyword "count(i.id)") 11284}]
+     :query    [(str "select count(i.id) "
+                     "from sub s "
+                     "join item i on i.feed_id = s.feed_id "
+                     "where s.user_id = ? "
+                     "and s.feed_id is not null")
+                core/user-id-int]}]))
 
 (def datasource (jdbc/get-datasource {:dbtype "sqlite" :dbname "storage/db.sqlite"}))
 

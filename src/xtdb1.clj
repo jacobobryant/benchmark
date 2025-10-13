@@ -22,26 +22,22 @@
                      '{:find [(pull user [*])]
                        :in [email]
                        :where [[user :user/email email]]}
-                     core/user-email)
-    :n        50}
+                     core/user-email)}
    {:id       :get-user-by-id
     :expected expected-user
-    :f        #(xt/entity % core/user-id)
-    :n        50}
+    :f        #(xt/entity % core/user-id)}
    {:id       :get-user-id-by-email
     :expected #{[core/user-id]}
     :f        #(xt/q % '{:find [user]
                          :in [email]
                          :where [[user :user/email email]]}
-                     core/user-email)
-    :n        50}
+                     core/user-email)}
    {:id       :get-user-email-by-id
     :expected #{[core/user-email]}
     :f        #(xt/q % '{:find [email]
                          :in [user]
                          :where [[user :user/email email]]}
-                     core/user-id)
-    :n        50}
+                     core/user-id)}
    {:id       :get-feeds
     :expected #{[162]}
     :f        #(xt/q %
@@ -49,8 +45,7 @@
                        :in [user]
                        :where [[sub :sub/user user]
                                [sub :sub.feed/feed feed]]}
-                     core/user-id)
-    :n        10}
+                     core/user-id)}
    {:id       :get-items
     :expected #{[11284]}
     :f        #(xt/q %
@@ -59,8 +54,7 @@
                        :where [[sub :sub/user user]
                                [sub :sub.feed/feed feed]
                                [item :item.feed/feed feed]]}
-                     core/user-id)
-    :n        10}])
+                     core/user-id)}])
 
 (defn start-node []
   (let [kv-store-fn (fn [basename]
