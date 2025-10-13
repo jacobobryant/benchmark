@@ -45,7 +45,7 @@
                                 core/user-id])
     :n        50}
    {:id       :get-feeds
-    :expected [{(keyword "count(s.feed_id)") 162}]
+    :expected [{:count 162}]
     :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
                                       "from sub s "
                                       "where s.user_id = ? "
@@ -53,7 +53,7 @@
                                  core/user-id])
     :n        10}
    {:id       :get-items
-    :expected [{(keyword "count(i.id)") 11284}]
+    :expected [{:count 11284}]
     :f        #(jdbc/execute! % [(str "select count(i.id) "
                                       "from sub s "
                                       "join item i on i.feed_id = s.feed_id "
