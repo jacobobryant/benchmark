@@ -154,7 +154,7 @@
 
 (defn ad-doc->db-row [ad]
   {:id             (:xt/id ad)
-   :user           (:ad/user ad)
+   :user_id        (:ad/user ad)
    :approve_state  (some-> (:ad/approve-state ad) name)
    :updated_at     (:ad/updated-at ad)
    :balance        (:ad/balance ad)

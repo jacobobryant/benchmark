@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS user_item (
 
 CREATE TABLE IF NOT EXISTS ad (
     id UUID PRIMARY KEY,
-    "user" UUID NOT NULL,
+    user_id UUID NOT NULL,
     approve_state TEXT NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     balance INTEGER NOT NULL,
