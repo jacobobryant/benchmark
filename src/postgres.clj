@@ -6,14 +6,31 @@
    [core]
    [next.jdbc :as jdbc]))
 
+(def expected-user
+  #:user{:timezone nil,
+         :cancel_at nil,
+         :plan nil,
+         :email_username "Sn0a6",
+         :id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
+         :customer_id "JIKApV1OsDDIp9uKRb",
+         :send_digest_at nil,
+         :joined_at nil,
+         :digest_last_sent #inst "2025-09-28T18:07:26.604436000-00:00",
+         :roles "#{:admin}",
+         :email "w6qhyZcYmAcXOoLWrq",
+         :from_the_sample nil,
+         :suppressed_at nil,
+         :digest_days "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
+         :use_original_links false})
+
 (def benchmarks
   [{:id       :get-user-by-email
-    :expected nil
+    :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from \"user\" where email = ?"
                                  core/user-email])
     :n        50}
    {:id       :get-user-by-id
-    :expected nil
+    :expected [expected-user]
     :f        #(jdbc/execute! % ["select * from \"user\" where id = ?"
                                  core/user-id])
     :n        50}
