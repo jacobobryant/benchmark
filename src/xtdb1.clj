@@ -4,58 +4,6 @@
    [core]
    [xtdb.api :as xt]))
 
-(def expected-user
-  {:user/email-username "Sn0a6"
-   :user/digest-last-sent (java.time.Instant/parse "2025-09-28T18:07:26.604435965Z")
-   :user/send-digest-at (java.time.LocalTime/parse "08:00")
-   :user/roles #{:admin}
-   :user/customer-id "JIKApV1OsDDIp9uKRb"
-   :user/email "w6qhyZcYmAcXOoLWrq"
-   :user/digest-days #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}
-   :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f"
-   :user/use-original-links false})
-
-(def benchmarks
-  [{:id       :get-user-by-email
-    :expected #{[expected-user]}
-    :f        #(xt/q %
-                     '{:find [(pull user [*])]
-                       :in [email]
-                       :where [[user :user/email email]]}
-                     core/user-email)}
-   {:id       :get-user-by-id
-    :expected expected-user
-    :f        #(xt/entity % core/user-id)}
-   {:id       :get-user-id-by-email
-    :expected #{[core/user-id]}
-    :f        #(xt/q % '{:find [user]
-                         :in [email]
-                         :where [[user :user/email email]]}
-                     core/user-email)}
-   {:id       :get-user-email-by-id
-    :expected #{[core/user-email]}
-    :f        #(xt/q % '{:find [email]
-                         :in [user]
-                         :where [[user :user/email email]]}
-                     core/user-id)}
-   {:id       :get-feeds
-    :expected #{[162]}
-    :f        #(xt/q %
-                     '{:find [(count feed)]
-                       :in [user]
-                       :where [[sub :sub/user user]
-                               [sub :sub.feed/feed feed]]}
-                     core/user-id)}
-   {:id       :get-items
-    :expected #{[11284]}
-    :f        #(xt/q %
-                     '{:find [(count item)]
-                       :in [user]
-                       :where [[sub :sub/user user]
-                               [sub :sub.feed/feed feed]
-                               [item :item.feed/feed feed]]}
-                     core/user-id)}])
-
 (defn start-node []
   (let [kv-store-fn (fn [basename]
                       {:kv-store {;; might be interesting to benchmark lmdb too, but eh
@@ -82,15 +30,54 @@
     (println "  waiting for indexing to finish...")
     (xt/sync node)))
 
-(defn benchmark []
-  (println "benchmarking XTDB 1")
-  (with-open [node (start-node)
-              db (xt/open-db node)]
-    (core/test-benchmarks db benchmarks) ; warm up
-    (core/run-benchmarks db benchmarks)))
+(def benchmarks
+  {:basename "xtdb1"
+   :setup setup
+   :with-conn (fn [f]
+                (with-open [node (start-node)
+                            db (xt/db node)]
+                  (f db)))
+   :run-query (fn [conn [f & args]]
+                (apply f conn args))
 
-(defn -main [command]
-  (case command
-    "setup" (setup)
-    "benchmark" (benchmark))
-  (System/exit 0))
+   :queries
+   {:get-user-by-email
+    [xt/q
+     '{:find [(pull user [*])]
+       :in [email]
+       :where [[user :user/email email]]}
+     core/user-email]
+
+    :get-user-by-id
+    [xt/entity core/user-id]
+
+    :get-user-id-by-email
+    [xt/q
+     '{:find [user]
+       :in [email]
+       :where [[user :user/email email]]}
+     core/user-email]
+
+    :get-user-email-by-id
+    [xt/q
+     '{:find [email]
+       :in [user]
+       :where [[user :user/email email]]}
+     core/user-id]
+
+    :get-feeds
+    [xt/q
+     '{:find [(count feed)]
+       :in [user]
+       :where [[sub :sub/user user]
+               [sub :sub.feed/feed feed]]}
+     core/user-id]
+
+    :get-items
+    [xt/q
+     '{:find [(count item)]
+       :in [user]
+       :where [[sub :sub/user user]
+               [sub :sub.feed/feed feed]
+               [item :item.feed/feed feed]]}
+     core/user-id]}})

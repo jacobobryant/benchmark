@@ -1,0 +1,52 @@
+;; auto-generated; do not edit.
+[{:id :get-items, :expected [{:count(i.id) 11284}]}
+ {:id :active-users-by-joined-at, :expected [{:count(*) 1436}]}
+ {:id :get-user-by-id,
+  :expected
+  [#:user{:timezone nil,
+          :cancel_at nil,
+          :plan nil,
+          :email_username "Sn0a6",
+          :id 4399,
+          :customer_id "JIKApV1OsDDIp9uKRb",
+          :send_digest_at "08:00",
+          :joined_at nil,
+          :digest_last_sent 1759082846,
+          :roles "#{:admin}",
+          :email "w6qhyZcYmAcXOoLWrq",
+          :from_the_sample 0,
+          :suppressed_at nil,
+          :digest_days
+          "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
+          :use_original_links 0}]}
+ {:id :user-items, :expected [{:count(*) 5057}]}
+ {:id :get-feeds, :expected [{:count(s.feed_id) 162}]}
+ {:id :email-items, :expected [{:count(*) 19051}]}
+ {:id :active-users-by-ad-clicked,
+  :expected [{:count(distinct user_id) 121}]}
+ {:id :get-user-email-by-id,
+  :expected [#:user{:email "w6qhyZcYmAcXOoLWrq"}]}
+ {:id :read-urls, :expected [{:count(distinct item.url) 2553}]}
+ {:id :get-user-by-email,
+  :expected
+  [#:user{:timezone nil,
+          :cancel_at nil,
+          :plan nil,
+          :email_username "Sn0a6",
+          :id 4399,
+          :customer_id "JIKApV1OsDDIp9uKRb",
+          :send_digest_at "08:00",
+          :joined_at nil,
+          :digest_last_sent 1759082846,
+          :roles "#{:admin}",
+          :email "w6qhyZcYmAcXOoLWrq",
+          :from_the_sample 0,
+          :suppressed_at nil,
+          :digest_days
+          "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
+          :use_original_links 0}]}
+ {:id :active-users-by-viewed-at,
+  :expected [{:count(distinct user_item.user_id) 582}]}
+ {:id :active-users-by-ad-updated, :expected [{:count(*) 14}]}
+ {:id :rss-items, :expected [{:count(*) 11284}]}
+ {:id :get-user-id-by-email, :expected [#:user{:id 4399}]}]

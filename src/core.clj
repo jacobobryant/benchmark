@@ -1,6 +1,9 @@
 (ns core
   (:require
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.pprint :refer [pprint print-table]]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [taoensso.nippy :as nippy]
    [taoensso.tufte :as tufte :refer [p]]))
@@ -58,25 +61,97 @@
 (def user-id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f")
 (def user-email "w6qhyZcYmAcXOoLWrq")
 (def user-id-int 4399)
+(def latest-t #inst "2025-09-29T05:36:23Z")
 
-(defn test-benchmarks [conn benchmarks]
-  (doseq [{:keys [id f expected]} benchmarks
-          :let [actual (f conn)]]
-    (assert (= expected actual)
-            (str "Benchmark " id " results are incorrect. Actual: "
-                 (pr-str actual) ", expected: " (pr-str expected)))))
+(defn read-fixture [f]
+  (edn/read-string (slurp (io/resource f))))
 
-(defn run-benchmarks [conn benchmarks]
-  (let [[_ pstats] (tufte/profiled
-                    {}
-                    (doseq [{:keys [id f n] :or {n 10}} benchmarks
-                            _ (range n)]
-                      (p id (f conn))))]
-    (println (tufte/format-pstats @pstats))))
+(defn ?s [n]
+  (str "(" (str/join ", " (repeat n "?")) ")"))
 
-(defn check-benchmark [conn benchmarks id]
-  ((->> benchmarks
-        (filterv #(= (:id %) id))
-        first
-        :f)
-   conn))
+(defn utc-date [instant]
+    (let [zone-id (java.time.ZoneId/of "UTC")
+          local-date (.toLocalDate (.atZone instant zone-id))]
+      (str local-date)))
+
+(defn benchmarks-for [db-name]
+  @(requiring-resolve (symbol db-name "benchmarks")))
+
+(defn setup [db-name]
+  ((:setup (benchmarks-for db-name))))
+
+(defn update-expected [db-name]
+  (let [{:keys [with-conn run-query queries]} (benchmarks-for db-name)]
+    (with-conn
+      (fn [conn]
+        (let [results (vec
+                       (for [[id query] queries]
+                         {:id id :expected (walk/postwalk
+                                            #(if (map? %) (into {} %) %)
+                                            (run-query conn query))}))]
+          (io/make-parents "expected/_")
+          (spit (str "expected/" db-name ".edn")
+                (str ";; auto-generated; do not edit.\n" (with-out-str (pprint results))))
+          (nippy/freeze-to-file (str "expected/" db-name ".nippy") results))))))
+
+(defn benchmark [db-name]
+  (let [{:keys [with-conn run-query queries]} (benchmarks-for db-name)]
+    (with-conn
+      (fn [conn]
+        ;; test
+        (let [id->expected (->> (nippy/thaw-from-file (str "expected/" db-name ".nippy"))
+                                (map (juxt :id :expected))
+                                (into {}))]
+          (doseq [[id query] queries
+                  :let [expected (get id->expected id)
+                        actual (run-query conn query)]]
+            (assert (= expected actual)
+                    (str "Benchmark " id " results are incorrect. Actual: "
+                         (pr-str actual) ", expected: " (pr-str expected)))))
+
+        ;; run
+        (let [[_ pstats] (tufte/profiled
+                          {}
+                          (doseq [[id query] queries
+                                  _ (range 10)]
+                            (p id (run-query conn query))))]
+          (io/make-parents "results/_")
+          (spit (str "results/" db-name ".edn")
+                (with-out-str (pprint @pstats)))
+          (println (tufte/format-pstats @pstats)))))))
+
+(defn report []
+  (let [results (->> (file-seq (io/file "results"))
+                     (filterv #(.isFile %))
+                     (mapcat (fn [f]
+                               (let [db-name (-> (.getName f)
+                                                 (str/split #"\.")
+                                                 first)]
+                                 (for [[id result] (:stats (edn/read-string (slurp f)))]
+                                   (assoc result :id id :db-name db-name)))))
+                     (group-by :id))
+        results (-> results
+                    (update-vals (fn [results]
+                                   (into {"query" (:id (first results))
+                                          "sqlite" nil
+                                          "postgres" nil
+                                          "xtdb1" nil
+                                          "xtdb2" nil}
+                                         (map (fn [{:keys [db-name p50]}]
+                                                [db-name (some->> (some-> p50 (/ (* 1000 1000.0)))
+                                                                  (format "%.03f"))]))
+                                         results)))
+                    vals)]
+    (println "p50 run times (ms):")
+    (print-table (sort-by #(some-> (get % "sqlite") parse-double) #(compare %2 %1) results))))
+
+(defn -main [command & args]
+  (apply println "Running" command args)
+  (time
+   (apply (case command
+            "setup" setup
+            "update-expected" update-expected
+            "benchmark" benchmark
+            "report" report)
+          args))
+  (System/exit 0))

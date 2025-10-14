@@ -1,4 +1,8 @@
 .cpcache
 .nrepl-port
 import
+import-raw
 storage
+sync.sh
+results/
+remote-benchmarks.sh

@@ -1,5 +1,6 @@
 (ns sqlite
   (:require
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
@@ -10,56 +11,6 @@
    [java.nio ByteBuffer]
    [java.time Instant]
    [java.util UUID]))
-
-(def expected-user #:user{:timezone nil,
-                          :cancel_at nil,
-                          :plan nil,
-                          :email_username "Sn0a6",
-                          :id 4399,
-                          :customer_id "JIKApV1OsDDIp9uKRb",
-                          :send_digest_at "08:00",
-                          :joined_at nil,
-                          :digest_last_sent 1759082846,
-                          :roles "#{:admin}",
-                          :email "w6qhyZcYmAcXOoLWrq",
-                          :from_the_sample 0,
-                          :suppressed_at nil,
-                          :digest_days "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
-                          :use_original_links 0})
-
-(def benchmarks
-  (mapv
-   (fn [benchmark]
-     (cond-> benchmark
-       (not (:f benchmark))
-       (assoc :f #(jdbc/execute! % (:query benchmark)))))
-   [{:id       :get-user-by-email
-     :expected [expected-user]
-     :query    ["select * from user where email = ?" core/user-email]}
-    {:id       :get-user-by-id
-     :expected [expected-user]
-     :query    ["select * from user where id = ?" core/user-id-int]}
-    {:id       :get-user-id-by-email
-     :expected [{:user/id core/user-id-int}]
-     :query    ["select id from user where email = ?" core/user-email]}
-    {:id       :get-user-email-by-id
-     :expected [{:user/email core/user-email}]
-     :query    ["select email from user where id = ?" core/user-id-int]}
-    {:id       :get-feeds
-     :expected [{(keyword "count(s.feed_id)") 162}]
-     :query    [(str "select count(s.feed_id) "
-                     "from sub s "
-                     "where s.user_id = ? "
-                     "and s.feed_id is not null")
-                core/user-id-int]}
-    {:id       :get-items
-     :expected [{(keyword "count(i.id)") 11284}]
-     :query    [(str "select count(i.id) "
-                     "from sub s "
-                     "join item i on i.feed_id = s.feed_id "
-                     "where s.user_id = ? "
-                     "and s.feed_id is not null")
-                core/user-id-int]}]))
 
 (def datasource (jdbc/get-datasource {:dbtype "sqlite" :dbname "storage/db.sqlite"}))
 
@@ -291,7 +242,7 @@
 
 (defn ad-doc->db-row [ad]
   {:id             (:xt/id ad)
-   :user           (:ad/user ad)
+   :user_id        (:ad/user ad)
    :approve_state  (some-> (:ad/approve-state ad) name)
    :updated_at     (:ad/updated-at ad)
    :balance        (:ad/balance ad)
@@ -363,14 +314,166 @@
   (create-id-mapping)
   (ingest))
 
-(defn benchmark []
-  (println "benchmarking sqlite")
-  (with-open [conn (get-conn)]
-    (core/test-benchmarks conn benchmarks) ; warm up
-    (core/run-benchmarks conn benchmarks)))
+(def benchmarks
+  {:basename "sqlite"
+   :with-conn (fn [f]
+                (with-open [conn (get-conn)]
+                  (f conn)))
+   :run-query jdbc/execute!
+   :setup setup
+   :queries
+   {:get-user-by-email
+    ["select * from user where email = ?" core/user-email]
 
-(defn -main [command]
-  (case command
-    "setup" (setup)
-    "benchmark" (benchmark))
-  (System/exit 0))
+    :get-user-by-id
+    ["select * from user where id = ?" core/user-id-int]
+
+    :get-user-id-by-email
+    ["select id from user where email = ?" core/user-email]
+
+    :get-user-email-by-id
+    ["select email from user where id = ?" core/user-id-int]
+
+    :get-feeds
+    ["select count(s.feed_id)
+      from sub s
+      where s.user_id = ?
+      and s.feed_id is not null"
+     core/user-id-int]
+
+    :get-items
+    ["select count(i.id)
+      from sub s
+      join item i on i.feed_id = s.feed_id
+      where s.user_id = ?
+      and s.feed_id is not null"
+     core/user-id-int]
+
+    ;; model/recommend.clj
+    :read-urls
+    ["select count(distinct item.url) from user_item
+      join item on item.id = user_item.item_id
+      where user_item.user_id = ?
+      and coalesce(viewed_at, favorited_at,  disliked_at, reported_at)
+      is not null
+      and item.url is not null"
+     core/user-id-int]
+
+    :email-items
+    ["select count(*) from (
+      select sub.id, item.id from sub
+      join item on sub.id = item.email_sub_id
+      where sub.user_id = ?
+      )"
+     core/user-id-int]
+
+    :rss-items
+    ["select count(*) from (
+      select sub.id, item.id
+      from sub
+      join item on item.feed_id = sub.feed_id
+      where sub.user_id = ?
+      )"
+     core/user-id-int]
+
+    :user-items
+    ["select count(*) from (
+      select item_id, viewed_at, favorited_at, disliked_at, reported_at
+      from user_item
+      where user_id = ?
+      )"
+     core/user-id-int]
+
+    ;; work.subscription
+    :active-users-by-joined-at
+    ["select count(*)
+      from user
+      where joined_at > ?"
+     (quot (inst-ms #inst "2025") 1000)]
+
+    :active-users-by-viewed-at
+    ["select count(distinct user_item.user_id)
+      from user_item
+      where viewed_at > ?"
+     (quot (inst-ms #inst "2025") 1000)]
+
+    :active-users-by-ad-updated
+    ["select count(*)
+      from ad
+      where updated_at > ?"
+     (quot (inst-ms #inst "2025") 1000)]
+
+    :active-users-by-ad-clicked
+    ["select count(distinct user_id)
+      from ad_click
+      where created_at > ?"
+     (quot (inst-ms #inst "2025") 1000)]
+
+    :feeds-to-sync
+    (let [{user-ids :ints} (core/read-fixture "active-user-ids.edn")]
+      (concat [(str "select count(distinct sub.feed_id)
+                     from sub
+                     join feed on feed.id = sub.feed_id
+                     where sub.user_id in " (core/?s (count user-ids))
+                    " and (feed.synced_at is null or feed.synced_at < ?)")]
+              (:ints (core/read-fixture "active-user-ids.edn"))
+              [(- (quot (inst-ms core/latest-t) 1000)
+                  (* 60 60 2))]))
+
+    :existing-feed-titles
+    (let [{:keys [id-int real-titles random-titles]} (core/read-fixture "biggest-feed.edn")
+          titles (concat real-titles random-titles)]
+      (concat [(str "select count(title)
+                     from item
+                     where item.feed_id = ?
+                     and title in " (core/?s (count titles)))
+               id-int]
+              titles))}})
+
+(defn q [& query]
+  (jdbc/execute! (get-conn) (vec query)))
+
+(def int-id->uuid
+  (delay (into {}
+               (map (comp vec reverse))
+               (nippy/thaw-from-file "storage/id-mapping-sqlite.nippy"))))
+
+(defn create-fixtures []
+  (let [t (- (quot (inst-ms core/latest-t) 1000)
+             (* 60 60 24 30 6))
+        user-ids (->> (concat (q "select id from user where joined_at > ?"
+                                 (quot (inst-ms #inst "2025") 1000))
+                              (q "select user_item.user_id from user_item where viewed_at > ?"
+                                 (quot (inst-ms #inst "2025") 1000))
+                              (q "select user_id from ad where updated_at > ?"
+                                 (quot (inst-ms #inst "2025") 1000)))
+                      (mapv (comp val first))
+                      distinct
+                      vec)]
+    (spit "resources/active-user-ids.edn"
+          (with-out-str
+           (pprint/pprint
+            {:ints user-ids
+             :uuids (mapv @int-id->uuid user-ids)}))))
+
+  (let [biggest-feed (-> (q "select feed.id, count(item.id) as n_items
+                             from feed join item on item.feed_id = feed.id
+                             group by feed.id
+                             order by n_items desc
+                             limit 1")
+                         first
+                         :feed/id)
+        item-titles (->> (q "select title from item
+                             where feed_id = ?
+                             order by random()
+                             limit 10
+                             "
+                            biggest-feed)
+                         (mapv :item/title))]
+    (spit "resources/biggest-feed.edn"
+          (with-out-str
+           (pprint/pprint
+            {:id-int biggest-feed
+             :id-uuid (get @int-id->uuid biggest-feed)
+             :real-titles item-titles
+             :random-titles (repeatedly 10 #(core/random-string (+ 5 (rand-int 15))))})))))

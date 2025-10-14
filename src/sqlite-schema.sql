@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS skip_items (
 
 CREATE TABLE IF NOT EXISTS ad (
     id INTEGER PRIMARY KEY,
-    user INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
     approve_state TEXT NOT NULL,
     updated_at INTEGER NOT NULL,
     balance INTEGER NOT NULL,
@@ -162,8 +162,9 @@ CREATE TABLE IF NOT EXISTS ad_credit (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_email ON user(email);
-
 CREATE INDEX IF NOT EXISTS idx_sub_user_id ON sub(user_id);
 CREATE INDEX IF NOT EXISTS idx_sub_feed_id ON sub(feed_id);
-
 CREATE INDEX IF NOT EXISTS idx_item_feed_id ON item(feed_id);
+CREATE INDEX IF NOT EXISTS idx_item_email_sub_id ON item(email_sub_id);
+CREATE INDEX IF NOT EXISTS idx_user_item_item_id ON user_item(item_id);
+CREATE INDEX IF NOT EXISTS idx_user_item_user_id ON user_item(user_id);

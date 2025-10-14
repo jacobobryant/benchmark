@@ -8,45 +8,6 @@
    [xtdb.api :as xt]
    [xtdb.node :as xtn]))
 
-(def expected-user
-  {:user/email-username "Sn0a6"
-   :user/digest-last-sent #xt/zdt "2025-09-28T18:07:26.604435Z[UTC]"
-   :user/send-digest-at #xt/time "08:00"
-   :user/roles #{:admin}
-   :user/customer-id "JIKApV1OsDDIp9uKRb"
-   :user/email "w6qhyZcYmAcXOoLWrq"
-   :user/digest-days #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}
-   :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f"
-   :user/use-original-links false})
-
-(def benchmarks
-  [{:id       :get-user-by-email
-    :expected [expected-user]
-    :f        #(xt/q % ["select * from users where user$email = ?" core/user-email])}
-   {:id       :get-user-by-id
-    :expected [expected-user]
-    :f        #(xt/q % ["select * from users where _id = ?" core/user-id])}
-   {:id       :get-user-id-by-email
-    :expected [{:xt/id core/user-id}]
-    :f        #(xt/q % ["select _id from users where user$email = ?" core/user-email])}
-   {:id       :get-user-email-by-id
-    :expected [{:user/email core/user-email}]
-    :f        #(xt/q % ["select user$email from users where _id = ?"
-                          core/user-id])}
-   {:id       :get-feeds
-    :expected [{:xt/column-1 162}]
-    :f        #(xt/q % [(str "select count(sub$feed$feed) from subs "
-                             "where sub$user = ? and sub$feed$feed is not null")
-                          core/user-id])}
-   {:id       :get-items
-    :expected [{:xt/column-1 11284}]
-    :f        #(xt/q % [(str "select count(i._id) "
-                             "from subs s "
-                             "join items i on i.item$feed$feed = s.sub$feed$feed "
-                             "where s.sub$user = ? "
-                             "and s.sub$feed$feed is not null")
-                        core/user-id])}])
-
 (defn start-node []
   (xtn/start-node
    {:log [:local {:path "storage/xtdb2/log"}]
@@ -113,15 +74,37 @@
   (create-id-mapping)
   (ingest))
 
-(defn benchmark []
-  (println "benchmarking XTDB 2")
-  (with-open [node (start-node)
-              conn (get-conn node)]
-    (core/test-benchmarks conn benchmarks) ; warm up
-    (core/run-benchmarks conn benchmarks)))
+(def benchmarks
+  {:basename "xtdb2"
+   :setup setup
+   :with-conn (fn [f]
+                (with-open [node (start-node)
+                            conn (get-conn node)]
+                  (f conn)))
+   :run-query xt/q
+   :queries
+   {:get-user-by-email
+    ["select * from users where user$email = ?" core/user-email]
 
-(defn -main [command]
-  (case command
-    "setup" (setup)
-    "benchmark" (benchmark))
-  (System/exit 0))
+    :get-user-by-id
+    ["select * from users where _id = ?" core/user-id]
+
+    :get-user-id-by-email
+    ["select _id from users where user$email = ?" core/user-email]
+
+    :get-user-email-by-id
+    ["select user$email from users where _id = ?" core/user-id]
+
+    :get-feeds
+    [(str "select count(sub$feed$feed) from subs "
+          "where sub$user = ? and sub$feed$feed is not null")
+     core/user-id]
+
+    :get-items
+    [(str "select count(i._id) "
+          "from subs s "
+          "join items i on i.item$feed$feed = s.sub$feed$feed "
+          "where s.sub$user = ? "
+          "and s.sub$feed$feed is not null")
+     core/user-id]}})
+

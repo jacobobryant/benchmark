@@ -1,0 +1,31 @@
+;; auto-generated; do not edit.
+[{:id :get-user-by-email,
+  :expected
+  [{:user/email-username "Sn0a6",
+    :user/digest-last-sent #xt/zdt "2025-09-28T18:07:26.604435Z[UTC]",
+    :user/send-digest-at #xt/time "08:00",
+    :user/roles #{:admin},
+    :user/customer-id "JIKApV1OsDDIp9uKRb",
+    :user/email "w6qhyZcYmAcXOoLWrq",
+    :user/digest-days
+    #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday},
+    :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
+    :user/use-original-links false}]}
+ {:id :get-user-by-id,
+  :expected
+  [{:user/email-username "Sn0a6",
+    :user/digest-last-sent #xt/zdt "2025-09-28T18:07:26.604435Z[UTC]",
+    :user/send-digest-at #xt/time "08:00",
+    :user/roles #{:admin},
+    :user/customer-id "JIKApV1OsDDIp9uKRb",
+    :user/email "w6qhyZcYmAcXOoLWrq",
+    :user/digest-days
+    #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday},
+    :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
+    :user/use-original-links false}]}
+ {:id :get-user-id-by-email,
+  :expected [#:xt{:id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f"}]}
+ {:id :get-user-email-by-id,
+  :expected [#:user{:email "w6qhyZcYmAcXOoLWrq"}]}
+ {:id :get-feeds, :expected [#:xt{:column-1 162}]}
+ {:id :get-items, :expected [#:xt{:column-1 11284}]}]

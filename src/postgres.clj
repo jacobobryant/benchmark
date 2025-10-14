@@ -6,56 +6,6 @@
    [core]
    [next.jdbc :as jdbc]))
 
-(def expected-user
-  #:user{:timezone nil,
-         :cancel_at nil,
-         :plan nil,
-         :email_username "Sn0a6",
-         :id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
-         :customer_id "JIKApV1OsDDIp9uKRb",
-         :send_digest_at nil,
-         :joined_at nil,
-         :digest_last_sent #inst "2025-09-28T18:07:26.604436000-00:00",
-         :roles "#{:admin}",
-         :email "w6qhyZcYmAcXOoLWrq",
-         :from_the_sample nil,
-         :suppressed_at nil,
-         :digest_days "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
-         :use_original_links false})
-
-(def benchmarks
-  [{:id       :get-user-by-email
-    :expected [expected-user]
-    :f        #(jdbc/execute! % ["select * from \"user\" where email = ?"
-                                 core/user-email])}
-   {:id       :get-user-by-id
-    :expected [expected-user]
-    :f        #(jdbc/execute! % ["select * from \"user\" where id = ?"
-                                 core/user-id])}
-   {:id       :get-user-id-by-email
-    :expected [{:user/id core/user-id}]
-    :f        #(jdbc/execute! % ["select id from \"user\" where email = ?"
-                                 core/user-email])}
-   {:id       :get-user-email-by-id
-    :expected [{:user/email core/user-email}]
-    :f        #(jdbc/execute! % ["select email from \"user\" where id = ?"
-                                core/user-id])}
-   {:id       :get-feeds
-    :expected [{:count 162}]
-    :f        #(jdbc/execute! % [(str "select count(s.feed_id) "
-                                      "from sub s "
-                                      "where s.user_id = ? "
-                                      "and s.feed_id is not null")
-                                 core/user-id])}
-   {:id       :get-items
-    :expected [{:count 11284}]
-    :f        #(jdbc/execute! % [(str "select count(i.id) "
-                                      "from sub s "
-                                      "join item i on i.feed_id = s.feed_id "
-                                      "where s.user_id = ? "
-                                      "and s.feed_id is not null")
-                                 core/user-id])}])
-
 (def datasource
   (jdbc/get-datasource
    {:dbtype "postgresql"
@@ -249,14 +199,37 @@
   (create-tables)
   (ingest))
 
-(defn benchmark []
-  (println "benchmarking postgres")
-  (with-open [conn (get-conn)]
-    (core/test-benchmarks conn benchmarks) ; warm up
-    (core/run-benchmarks conn benchmarks)))
+(def benchmarks
+  {:basename "postgres"
+   :with-conn (fn [f]
+                (with-open [conn (get-conn)]
+                  (f conn)))
+   :run-query jdbc/execute!
+   :setup setup
+   :queries
+   {:get-user-by-email
+   ["select * from \"user\" where email = ?" core/user-email]
 
-(defn -main [command]
-  (case command
-    "setup" (setup)
-    "benchmark" (benchmark))
-  (System/exit 0))
+   :get-user-by-id
+   ["select * from \"user\" where id = ?" core/user-id]
+
+   :get-user-id-by-email
+   ["select id from \"user\" where email = ?" core/user-email]
+
+   :get-user-email-by-id
+   ["select email from \"user\" where id = ?" core/user-id]
+
+   :get-feeds
+   [(str "select count(s.feed_id) "
+         "from sub s "
+         "where s.user_id = ? "
+         "and s.feed_id is not null")
+    core/user-id]
+
+   :get-items
+   [(str "select count(i.id) "
+         "from sub s "
+         "join item i on i.feed_id = s.feed_id "
+         "where s.user_id = ? "
+         "and s.feed_id is not null")
+    core/user-id]}})
