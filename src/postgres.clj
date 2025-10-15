@@ -257,7 +257,8 @@
     ["select sub.id, item.id
       from sub
       join item on sub.feed_id = item.feed_id
-      where sub.user_id = ?"
+      where sub.user_id = ?
+      and sub.feed_id is not null"
      core/user-id]
 
     :user-items
