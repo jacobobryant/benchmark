@@ -132,7 +132,8 @@
     ["select subs._id as sub_id, item._id as item_id
       from subs
       join items on item$feed$feed = sub$feed$feed
-      where sub$user = ?"
+      where sub$user = ?
+      and item$feed$feed is not null"
      core/user-id]
 
     :user-items
