@@ -2,7 +2,9 @@
   (:require
    [clojure.java.io :as io]
    [core]
-   [xtdb.api :as xt]))
+   [xtdb.api :as xt]) 
+  (:import
+   [java.time Instant]))
 
 (defn start-node []
   (let [kv-store-fn (fn [basename]
@@ -80,4 +82,123 @@
        :where [[sub :sub/user user]
                [sub :sub.feed/feed feed]
                [item :item.feed/feed feed]]}
-     core/user-id]}})
+     core/user-id]
+
+    :read-urls
+    [xt/q
+     '{:find [url]
+       :in [user]
+       :where [[usit :user-item/user user]
+               [usit :user-item/item item]
+               [item :item/url url]
+               (or [usit :user-item/viewed-at _]
+                   [usit :user-item/favorited-at _]
+                   [usit :user-item/disliked-at _]
+                   [usit :user-item/reported-at _])]}
+     core/user-id]
+
+    :email-items
+    [xt/q
+     '{:find [sub item]
+       :in [user]
+       :where [[sub :sub/user user]
+               [item :item.email/sub sub]]}
+     core/user-id]
+
+    :rss-items
+    [xt/q
+     '{:find [sub item]
+       :in [user]
+       :where [[sub :sub/user user]
+               [sub :sub.feed/feed feed]
+               [item :item.feed/feed feed]]}
+     core/user-id]
+
+    :user-items
+    [xt/q
+     '{:find [(pull usit [:user-item/item
+                          :user-item/viewed-at
+                          :user-item/favorited-at
+                          :user-item/disliked-at
+                          :user-item/reported-at])]
+       :in [user]
+       :where [[usit :user-item/user user]]}
+     core/user-id]
+
+    :active-users-by-joined-at
+    [xt/q
+     '{:find [user]
+       :in [t0]
+       :where [[user :user/joined-at t]
+               [(< t0 t)]]}
+     (.toInstant #inst "2025")]
+
+    :active-users-by-viewed-at
+    [xt/q
+     '{:find [user]
+       :in [t0]
+       :where [[usit :user-item/user user]
+               [usit :user-item/viewed-at t]
+               [(< t0 t)]]}
+     (.toInstant #inst "2025")]
+
+
+    :active-users-by-ad-updated
+    [xt/q
+     '{:find [user]
+       :in [t0]
+       :where [[ad :ad/user user]
+               [ad :ad/updated-at t]
+               [(< t0 t)]]}
+     (.toInstant #inst "2025")]
+
+    :active-users-by-ad-clicked
+    [xt/q
+     '{:find [user]
+       :in [t0]
+       :where [[click :ad.click/user user]
+               [click :ad.click/created-at t]
+               [(< t0 t)]]}
+     (.toInstant #inst "2025")]
+
+    :feeds-to-sync
+    (let [{user-ids :uuids} (core/read-fixture "active-user-ids.edn")]
+      [xt/q
+       {:find '[feed]
+        :in '[[user ...] t0]
+        :where ['[sub :sub/user user]
+                '[sub :sub.feed/feed feed]
+                '[feed :feed/url]
+                [(list 'get-attr 'feed :feed/synced-at (java.time.Instant/ofEpochMilli 0))
+                 '[synced-at ...]]
+                '[(< synced-at t0)]]}
+       user-ids
+       (.minusSeconds (.toInstant core/latest-t)
+                      (* 60 60 2))])
+
+    :existing-feed-titles
+    (let [{:keys [id-uuid real-titles random-titles]} (core/read-fixture "biggest-feed.edn")
+          titles (concat real-titles random-titles)]
+      [xt/q
+       '{:find [title]
+         :in [feed [title ...]]
+         :where [[item :item.feed/feed feed]
+                 [item :item/title title]]}
+       id-uuid
+       titles])}})
+
+(defonce node nil)
+
+(defn q [f & query]
+  (apply f (xt/db node) query))
+
+(defn q-benchmark [id]
+  (apply q (get-in benchmarks [:queries id])))
+
+(comment
+  (def node (start-node))
+  (def db (xt/db node))
+  (.close node)
+
+  (count (time (q-benchmark :existing-feed-titles)))
+  )

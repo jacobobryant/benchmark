@@ -1,40 +1,17 @@
 ;; auto-generated; do not edit.
-[{:id :get-user-by-email,
-  :expected
-  #{[{:user/email-username "Sn0a6",
-      :user/digest-last-sent
-      #object[java.time.Instant 0x4a8d149 "2025-09-28T18:07:26.604435965Z"],
-      :user/send-digest-at
-      #object[java.time.LocalTime 0x36f394c9 "08:00"],
-      :user/roles #{:admin},
-      :user/customer-id "JIKApV1OsDDIp9uKRb",
-      :user/email "w6qhyZcYmAcXOoLWrq",
-      :user/digest-days
-      #{:saturday
-        :tuesday
-        :wednesday
-        :sunday
-        :friday
-        :monday
-        :thursday},
-      :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
-      :user/use-original-links false}]}}
- {:id :get-user-by-id,
-  :expected
-  {:user/email-username "Sn0a6",
-   :user/digest-last-sent
-   #object[java.time.Instant 0x4a8d149 "2025-09-28T18:07:26.604435965Z"],
-   :user/send-digest-at
-   #object[java.time.LocalTime 0x36f394c9 "08:00"],
-   :user/roles #{:admin},
-   :user/customer-id "JIKApV1OsDDIp9uKRb",
-   :user/email "w6qhyZcYmAcXOoLWrq",
-   :user/digest-days
-   #{:saturday :tuesday :wednesday :sunday :friday :monday :thursday},
-   :xt/id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
-   :user/use-original-links false}}
- {:id :get-user-id-by-email,
-  :expected #{[#uuid "e86e5e14-0001-46eb-9d11-134162ce930f"]}}
- {:id :get-user-email-by-id, :expected #{["w6qhyZcYmAcXOoLWrq"]}}
- {:id :get-feeds, :expected #{[162]}}
- {:id :get-items, :expected #{[11284]}}]
+[{:id :get-items, :expected :timeout}
+ {:id :active-users-by-joined-at, :expected 1436}
+ {:id :get-user-by-id, :expected 9}
+ {:id :user-items, :expected 5057}
+ {:id :get-feeds, :expected 1}
+ {:id :email-items, :expected :timeout}
+ {:id :feeds-to-sync, :expected :timeout}
+ {:id :active-users-by-ad-clicked, :expected 121}
+ {:id :get-user-email-by-id, :expected 1}
+ {:id :read-urls, :expected 2553}
+ {:id :get-user-by-email, :expected 1}
+ {:id :existing-feed-titles, :expected 10}
+ {:id :active-users-by-viewed-at, :expected 582}
+ {:id :active-users-by-ad-updated, :expected 14}
+ {:id :rss-items, :expected 11284}
+ {:id :get-user-id-by-email, :expected 1}]

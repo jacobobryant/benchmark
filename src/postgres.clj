@@ -4,7 +4,8 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [core]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc])
+  (:import [java.sql Timestamp]))
 
 (def datasource
   (jdbc/get-datasource
@@ -18,7 +19,8 @@
 (defn get-conn []
   (jdbc/get-connection datasource))
 
-(defn create-tables []
+(defn update-schema []
+  (println "updating schema")
   (with-open [conn (get-conn)]
     (doseq [schema (str/split (slurp (io/resource "postgres-schema.sql")) #";")
             :when (not-empty (str/trim schema))]
@@ -159,7 +161,7 @@
         (map (fn [[k v]]
                [k (cond
                     (instance? java.time.Instant v)
-                    (java.sql.Timestamp/from v)
+                    (Timestamp/from v)
 
                     (string? v)
                     (str/replace v "\u0000" "")
@@ -196,11 +198,12 @@
 
 (defn setup []
   (println "setting up postgres")
-  (create-tables)
+  (update-schema)
   (ingest))
 
 (def benchmarks
   {:basename "postgres"
+   :migrate update-schema
    :with-conn (fn [f]
                 (with-open [conn (get-conn)]
                   (f conn)))
@@ -232,4 +235,76 @@
          "join item i on i.feed_id = s.feed_id "
          "where s.user_id = ? "
          "and s.feed_id is not null")
-    core/user-id]}})
+    core/user-id]
+
+    :read-urls
+    ["select distinct item.url
+      from user_item
+      join item on item.id = user_item.item_id
+      where user_item.user_id = ?
+      and coalesce(viewed_at, favorited_at,  disliked_at, reported_at) is not null
+      and item.url is not null"
+     core/user-id]
+
+    :email-items
+    ["select sub.id, item.id
+      from sub
+      join item on sub.id = item.email_sub_id
+      where sub.user_id = ?"
+     core/user-id]
+
+    :rss-items
+    ["select sub.id, item.id
+      from sub
+      join item on sub.feed_id = item.feed_id
+      where sub.user_id = ?"
+     core/user-id]
+
+    :user-items
+    ["select item_id, viewed_at, favorited_at, disliked_at, reported_at
+      from user_item
+      where user_id = ?"
+     core/user-id]
+
+    :active-users-by-joined-at
+    ["select id from \"user\" where joined_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-viewed-at
+    ["select distinct user_item.user_id from user_item where viewed_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-ad-updated
+    ["select user_id from ad where updated_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-ad-clicked
+    ["select distinct user_id from ad_click where created_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :feeds-to-sync
+    (let [{user-ids :uuids} (core/read-fixture "active-user-ids.edn")]
+      (concat [(str "select distinct sub.feed_id
+                     from sub
+                     join feed on feed.id = sub.feed_id
+                     where sub.user_id in " (core/?s (count user-ids))
+                    " and (feed.synced_at is null or feed.synced_at < ?)")]
+              user-ids
+              [(Timestamp. (- (.getTime core/latest-t)
+                              (* 1000 60 60 2)))]))
+
+    :existing-feed-titles
+    (let [{:keys [id-uuid real-titles random-titles]} (core/read-fixture "biggest-feed.edn")
+          titles (concat real-titles random-titles)]
+      (concat [(str "select title
+                     from item
+                     where item.feed_id = ?
+                     and title in " (core/?s (count titles)))
+               id-uuid]
+              titles))}})
+
+(defn q [& query]
+  (jdbc/execute! (get-conn) (vec query)))
+
+(defn q-benchmark [id]
+  (apply q (get-in benchmarks [:queries id])))

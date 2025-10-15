@@ -1,45 +1,17 @@
 ;; auto-generated; do not edit.
-[{:id :get-user-by-email,
-  :expected
-  [#:user{:timezone nil,
-          :cancel_at nil,
-          :plan nil,
-          :email_username "Sn0a6",
-          :id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
-          :customer_id "JIKApV1OsDDIp9uKRb",
-          :send_digest_at nil,
-          :joined_at nil,
-          :digest_last_sent
-          #inst "2025-09-28T18:07:26.604436000-00:00",
-          :roles "#{:admin}",
-          :email "w6qhyZcYmAcXOoLWrq",
-          :from_the_sample nil,
-          :suppressed_at nil,
-          :digest_days
-          "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
-          :use_original_links false}]}
- {:id :get-user-by-id,
-  :expected
-  [#:user{:timezone nil,
-          :cancel_at nil,
-          :plan nil,
-          :email_username "Sn0a6",
-          :id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f",
-          :customer_id "JIKApV1OsDDIp9uKRb",
-          :send_digest_at nil,
-          :joined_at nil,
-          :digest_last_sent
-          #inst "2025-09-28T18:07:26.604436000-00:00",
-          :roles "#{:admin}",
-          :email "w6qhyZcYmAcXOoLWrq",
-          :from_the_sample nil,
-          :suppressed_at nil,
-          :digest_days
-          "#{:saturday :tuesday :wednesday :sunday :friday :monday :thursday}",
-          :use_original_links false}]}
- {:id :get-user-id-by-email,
-  :expected [#:user{:id #uuid "e86e5e14-0001-46eb-9d11-134162ce930f"}]}
- {:id :get-user-email-by-id,
-  :expected [#:user{:email "w6qhyZcYmAcXOoLWrq"}]}
- {:id :get-feeds, :expected [{:count 162}]}
- {:id :get-items, :expected [{:count 11284}]}]
+[{:id :get-items, :expected 1}
+ {:id :active-users-by-joined-at, :expected 1436}
+ {:id :get-user-by-id, :expected 1}
+ {:id :user-items, :expected 5057}
+ {:id :get-feeds, :expected 1}
+ {:id :email-items, :expected 19051}
+ {:id :feeds-to-sync, :expected 1260}
+ {:id :active-users-by-ad-clicked, :expected 121}
+ {:id :get-user-email-by-id, :expected 1}
+ {:id :read-urls, :expected 2553}
+ {:id :get-user-by-email, :expected 1}
+ {:id :existing-feed-titles, :expected 10}
+ {:id :active-users-by-viewed-at, :expected 582}
+ {:id :active-users-by-ad-updated, :expected 14}
+ {:id :rss-items, :expected 11284}
+ {:id :get-user-id-by-email, :expected 1}]

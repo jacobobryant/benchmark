@@ -64,7 +64,8 @@
 (def latest-t #inst "2025-09-29T05:36:23Z")
 
 (defn read-fixture [f]
-  (edn/read-string (slurp (io/resource f))))
+  ;; for some reason io/resource is giving me nil when used over remote nrepl (???)
+  (edn/read-string (slurp (io/file "resources" f))))
 
 (defn ?s [n]
   (str "(" (str/join ", " (repeat n "?")) ")"))
@@ -80,31 +81,40 @@
 (defn setup [db-name]
   ((:setup (benchmarks-for db-name))))
 
+(defmacro catch-timeout [& body]
+  `(try
+     ~@body
+     (catch java.util.concurrent.TimeoutException e#
+       :timeout)))
+
 (defn update-expected [db-name]
-  (let [{:keys [with-conn run-query queries]} (benchmarks-for db-name)]
+  (let [{:keys [with-conn run-query queries migrate]} (benchmarks-for db-name)]
+    (when migrate
+      (migrate))
     (with-conn
       (fn [conn]
         (let [results (vec
                        (for [[id query] queries]
-                         {:id id :expected (walk/postwalk
-                                            #(if (map? %) (into {} %) %)
-                                            (run-query conn query))}))]
+                         {:id id :expected (catch-timeout (count (run-query conn query)))}))]
           (io/make-parents "expected/_")
           (spit (str "expected/" db-name ".edn")
                 (str ";; auto-generated; do not edit.\n" (with-out-str (pprint results))))
           (nippy/freeze-to-file (str "expected/" db-name ".nippy") results))))))
 
 (defn benchmark [db-name]
-  (let [{:keys [with-conn run-query queries]} (benchmarks-for db-name)]
+  (let [{:keys [with-conn run-query queries migrate]} (benchmarks-for db-name)]
+    (when migrate
+      (migrate))
     (with-conn
       (fn [conn]
-        ;; test
+        ;; test (and warm up caches)
         (let [id->expected (->> (nippy/thaw-from-file (str "expected/" db-name ".nippy"))
                                 (map (juxt :id :expected))
                                 (into {}))]
           (doseq [[id query] queries
                   :let [expected (get id->expected id)
-                        actual (run-query conn query)]]
+                        actual (catch-timeout (count (run-query conn query)))]
+                  :when (not (some #{:timeout} [actual expected]))]
             (assert (= expected actual)
                     (str "Benchmark " id " results are incorrect. Actual: "
                          (pr-str actual) ", expected: " (pr-str expected)))))
@@ -113,8 +123,12 @@
         (let [[_ pstats] (tufte/profiled
                           {}
                           (doseq [[id query] queries
-                                  _ (range 10)]
-                            (p id (run-query conn query))))]
+                                  :let [time-limit (+ (System/nanoTime) (* 1000 1000 1000 29.5))]]
+                            (loop [n 0]
+                              (when (and (< n 10)
+                                         (< (System/nanoTime) time-limit))
+                                (p id (catch-timeout (run-query conn query)))
+                                (recur (inc n))))))]
           (io/make-parents "results/_")
           (spit (str "results/" db-name ".edn")
                 (with-out-str (pprint @pstats)))
@@ -133,17 +147,17 @@
         results (-> results
                     (update-vals (fn [results]
                                    (into {"query" (:id (first results))
-                                          "sqlite" nil
-                                          "postgres" nil
+                                          "xtdb2" nil
                                           "xtdb1" nil
-                                          "xtdb2" nil}
+                                          "postgres" nil
+                                          "sqlite" nil}
                                          (map (fn [{:keys [db-name p50]}]
                                                 [db-name (some->> (some-> p50 (/ (* 1000 1000.0)))
                                                                   (format "%.03f"))]))
                                          results)))
                     vals)]
     (println "p50 run times (ms):")
-    (print-table (sort-by #(some-> (get % "sqlite") parse-double) #(compare %2 %1) results))))
+    (print-table (sort-by #(some-> (get % "xtdb2") parse-double) #(compare %2 %1) results))))
 
 (defn -main [command & args]
   (apply println "Running" command args)

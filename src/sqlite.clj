@@ -17,12 +17,14 @@
 (defn get-conn []
   (jdbc/get-connection datasource))
 
-(defn create-tables []
-  (println "creating tables")
+(defn update-schema []
+  (println "updating schema")
   (with-open [conn (get-conn)]
     (doseq [schema (str/split (slurp (io/resource "sqlite-schema.sql")) #";")
             :when (not-empty (str/trim schema))]
-      (jdbc/execute! conn [schema]))))
+      (jdbc/execute! conn [schema]))
+    (when (empty? (jdbc/execute! conn ["select 1 from pragma_table_info('ad') where name = 'user_id'"]))
+      (jdbc/execute! conn ["alter table ad rename user to user_id"]))))
 
 (defn get-ids [doc]
   (mapcat (fn [[k v]]
@@ -310,12 +312,13 @@
 
 (defn setup []
   (println "setting up sqlite")
-  (create-tables)
+  (update-schema)
   (create-id-mapping)
   (ingest))
 
 (def benchmarks
   {:basename "sqlite"
+   :migrate update-schema
    :with-conn (fn [f]
                 (with-open [conn (get-conn)]
                   (f conn)))
@@ -351,79 +354,65 @@
 
     ;; model/recommend.clj
     :read-urls
-    ["select count(distinct item.url) from user_item
+    ["select distinct item.url
+      from user_item
       join item on item.id = user_item.item_id
       where user_item.user_id = ?
-      and coalesce(viewed_at, favorited_at,  disliked_at, reported_at)
-      is not null
+      and coalesce(viewed_at, favorited_at,  disliked_at, reported_at) is not null
       and item.url is not null"
      core/user-id-int]
 
     :email-items
-    ["select count(*) from (
-      select sub.id, item.id from sub
+    ["select sub.id, item.id from sub
       join item on sub.id = item.email_sub_id
-      where sub.user_id = ?
-      )"
+      where sub.user_id = ?"
      core/user-id-int]
 
     :rss-items
-    ["select count(*) from (
-      select sub.id, item.id
+    ["select sub.id, item.id
       from sub
       join item on item.feed_id = sub.feed_id
-      where sub.user_id = ?
-      )"
+      where sub.user_id = ?"
      core/user-id-int]
 
     :user-items
-    ["select count(*) from (
-      select item_id, viewed_at, favorited_at, disliked_at, reported_at
+    ["select item_id, viewed_at, favorited_at, disliked_at, reported_at
       from user_item
-      where user_id = ?
-      )"
+      where user_id = ?"
      core/user-id-int]
 
     ;; work.subscription
     :active-users-by-joined-at
-    ["select count(*)
-      from user
-      where joined_at > ?"
+    ["select id from user where joined_at > ?"
      (quot (inst-ms #inst "2025") 1000)]
 
     :active-users-by-viewed-at
-    ["select count(distinct user_item.user_id)
-      from user_item
-      where viewed_at > ?"
+    ["select distinct user_item.user_id from user_item where viewed_at > ?"
      (quot (inst-ms #inst "2025") 1000)]
 
     :active-users-by-ad-updated
-    ["select count(*)
-      from ad
-      where updated_at > ?"
+    ["select user_id from ad where updated_at > ?"
      (quot (inst-ms #inst "2025") 1000)]
 
     :active-users-by-ad-clicked
-    ["select count(distinct user_id)
-      from ad_click
-      where created_at > ?"
+    ["select distinct user_id from ad_click where created_at > ?"
      (quot (inst-ms #inst "2025") 1000)]
 
     :feeds-to-sync
     (let [{user-ids :ints} (core/read-fixture "active-user-ids.edn")]
-      (concat [(str "select count(distinct sub.feed_id)
+      (concat [(str "select distinct sub.feed_id
                      from sub
                      join feed on feed.id = sub.feed_id
                      where sub.user_id in " (core/?s (count user-ids))
                     " and (feed.synced_at is null or feed.synced_at < ?)")]
-              (:ints (core/read-fixture "active-user-ids.edn"))
+              user-ids
               [(- (quot (inst-ms core/latest-t) 1000)
                   (* 60 60 2))]))
 
     :existing-feed-titles
     (let [{:keys [id-int real-titles random-titles]} (core/read-fixture "biggest-feed.edn")
           titles (concat real-titles random-titles)]
-      (concat [(str "select count(title)
+      (concat [(str "select title
                      from item
                      where item.feed_id = ?
                      and title in " (core/?s (count titles)))

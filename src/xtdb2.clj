@@ -6,7 +6,9 @@
    [core]
    [taoensso.nippy :as nippy]
    [xtdb.api :as xt]
-   [xtdb.node :as xtn]))
+   [xtdb.node :as xtn]) 
+  (:import
+   [java.sql Timestamp]))
 
 (defn start-node []
   (xtn/start-node
@@ -106,5 +108,95 @@
           "join items i on i.item$feed$feed = s.sub$feed$feed "
           "where s.sub$user = ? "
           "and s.sub$feed$feed is not null")
-     core/user-id]}})
+     core/user-id]
 
+    :read-urls
+    ["select distinct item$url
+      from user_items
+      join items on items._id = user_item$item
+      where user_item$user = ?
+      and coalesce(user_item$viewed_at, user_item$favorited_at, user_item$disliked_at,
+      user_item$reported_at) is not null
+      and item$url is not null"
+     core/user-id]
+
+    :email-items
+    ["select subs._id as sub_id, items._id as item_id
+      from subs
+      join items on subs._id = item$email$sub
+      where sub$user = ?"
+     core/user-id]
+
+
+    :rss-items
+    ["select subs._id as sub_id, item._id as item_id
+      from subs
+      join items on item$feed$feed = sub$feed$feed
+      where sub$user = ?"
+     core/user-id]
+
+    :user-items
+    ["select user_item$item, user_item$viewed_at, user_item$favorited_at,
+      user_item$disliked_at, user_item$reported_at
+      from user_items
+      where user_item$user = ?"
+     core/user-id]
+
+    :active-users-by-joined-at
+    ["select _id from users where user$joined_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-viewed-at
+    ["select distinct user_item$user from user_items where user_item$viewed_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-ad-updated
+    ["select ad$user from ads where ad$updated_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :active-users-by-ad-clicked
+    ["select distinct ad$click$user from ad_clicks where ad$click$created_at > ?"
+     (Timestamp. (.getTime #inst "2025"))]
+
+    :feeds-to-sync
+    (let [{user-ids :uuids} (core/read-fixture "active-user-ids.edn")]
+      (vec
+       (concat [(str "select distinct sub$feed$feed
+                      from subs
+                      join feeds on feeds._id = sub$feed$feed
+                      where sub$user in " (core/?s (count user-ids))
+                     " and (feed$synced_at is null or feed$synced_at < ?)")]
+               user-ids
+               [(Timestamp. (- (.getTime core/latest-t)
+                               (* 1000 60 60 2)))])))
+
+    :existing-feed-titles
+    (let [{:keys [id-uuid real-titles random-titles]} (core/read-fixture "biggest-feed.edn")
+          titles (concat real-titles random-titles)]
+      (vec
+       (concat [(str "select item$title
+                      from items
+                      where item$feed$feed = ?
+                      and item$title in " (core/?s (count titles)))
+                id-uuid]
+               titles)))}})
+
+(defonce node nil)
+
+(defn q [& query]
+  (with-open [conn (get-conn node)]
+    (xt/q conn (vec query))))
+
+(defn q-benchmark [id]
+  (apply q (get-in benchmarks [:queries id])))
+
+(comment
+  (def node (start-node))
+  (def conn (get-conn node))
+  (.close conn)
+  (.close node)
+
+  (count (time (q-benchmark :existing-feed-titles)))
+  (inc 3)
+
+  )
