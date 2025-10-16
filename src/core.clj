@@ -123,12 +123,8 @@
         (let [[_ pstats] (tufte/profiled
                           {}
                           (doseq [[id query] queries
-                                  :let [time-limit (+ (System/nanoTime) (* 1000 1000 1000 29.5))]]
-                            (loop [n 0]
-                              (when (and (< n 10)
-                                         (< (System/nanoTime) time-limit))
-                                (p id (catch-timeout (run-query conn query)))
-                                (recur (inc n))))))]
+                                  _ (range 10)]
+                            (p id (catch-timeout (run-query conn query)))))]
           (io/make-parents "results/_")
           (spit (str "results/" db-name ".edn")
                 (with-out-str (pprint @pstats)))
