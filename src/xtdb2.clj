@@ -133,7 +133,7 @@
       from subs
       join items on item$feed$feed = sub$feed$feed
       where sub$user = ?
-      and item$feed$feed is not null"
+      and sub$feed$feed is not null"
      core/user-id]
 
     :user-items
