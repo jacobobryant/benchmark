@@ -187,15 +187,6 @@
        id-uuid
        titles])
 
-    :skips
-    [xt/q
-     '{:find [item t]
-       :in [user]
-       :where [[skip :skip/user user]
-               [skip :skip/items item]
-               [skip :skip/timeline-created-at t]]}
-     core/user-id]
-
     :favorited-urls
     [xt/q
      '{:find [url]

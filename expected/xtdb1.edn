@@ -1,17 +1,35 @@
 ;; auto-generated; do not edit.
 [{:id :get-items, :expected :timeout}
  {:id :active-users-by-joined-at, :expected 1436}
+ {:id :favorited-urls, :expected :timeout}
  {:id :get-user-by-id, :expected 9}
  {:id :user-items, :expected 5057}
+ {:id :latest-ad-clicks, :expected 65}
+ {:id :favorites, :expected :timeout}
+ {:id :all-n-likes, :expected :timeout}
  {:id :get-feeds, :expected 1}
- {:id :email-items, :expected :timeout}
+ {:id :email-items, :expected 19051}
+ {:id :direct-urls, :expected :timeout}
+ {:id :skips, :expected 1702}
  {:id :feeds-to-sync, :expected :timeout}
  {:id :active-users-by-ad-clicked, :expected 121}
  {:id :get-user-email-by-id, :expected 1}
+ {:id :latest-emails-received-at, :expected 429}
+ {:id :subscription-status, :expected 591}
+ {:id :unique-ad-clicks, :expected 65}
+ {:id :recent-email-items, :expected 245}
  {:id :read-urls, :expected 2553}
+ {:id :recent-rss-items, :expected 214}
  {:id :get-user-by-email, :expected 1}
  {:id :existing-feed-titles, :expected 10}
  {:id :active-users-by-viewed-at, :expected 582}
+ {:id :charge-amounts-by-status, :expected 52}
+ {:id :recent-bookmarks, :expected 27}
  {:id :active-users-by-ad-updated, :expected 14}
+ {:id :approved-candidates, :expected :timeout}
+ {:id :ads-clicked-at, :expected 2590}
  {:id :rss-items, :expected 11284}
- {:id :get-user-id-by-email, :expected 1}]
+ {:id :candidate-statuses, :expected 3}
+ {:id :get-user-id-by-email, :expected 1}
+ {:id :feed-sub-urls, :expected 162}
+ {:id :ad-recent-cost, :expected 19}]
