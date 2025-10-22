@@ -418,15 +418,133 @@
                      where item.feed_id = ?
                      and title in " (core/?s (count titles)))
                id-int]
-              titles))}})
+              titles))
+
+    :favorited-urls
+    ["select url
+      from item
+      join user_item on user_item.item_id = item.id
+      where user_item.favorited_at is not null"]
+
+    :direct-urls
+    ["select url from item where kind = 'direct'"]
+
+    :recent-email-items
+    ["select item.id, ingested_at
+      from sub
+      join item on sub.id = item.email_sub_id
+      where sub.user_id = ?
+      and item.ingested_at > ?"
+     core/user-id-int
+     (quot (inst-ms #inst "2025-09-15T05:36:23Z") 1000)]
+
+    :recent-rss-items
+    ["select item.id, ingested_at
+      from sub
+      join item on item.feed_id = sub.feed_id
+      where sub.user_id = ?
+      and sub.feed_id is not null
+      and item.ingested_at > ?"
+     core/user-id-int
+     (quot (inst-ms #inst "2025-09-15T05:36:23Z") 1000)]
+
+    :recent-bookmarks
+    ["select item_id, bookmarked_at
+      from user_item
+      where user_id = ?
+      and bookmarked_at > ?"
+     core/user-id-int
+     (quot (inst-ms #inst "2024-09-15T05:36:23Z") 1000)]
+
+    :subscription-status
+    ["select id, unsubscribed_at
+      from sub
+      where sub.user_id = ?"
+     core/user-id-int]
+
+    :latest-emails-received-at
+    ["select sub.id, max(item.ingested_at)
+      from sub
+      join item on item.email_sub_id = sub.id
+      where sub.user_id = ?
+      group by sub.id"
+     core/user-id-int]
+
+    :unique-ad-clicks
+    ["select ad_id, count(distinct user_id)
+      from ad_click
+      group by ad_id"]
+
+    :latest-ad-clicks
+    ["select ad_id, max(created_at)
+      from ad_click
+      group by ad_id"]
+
+    :charge-amounts-by-status
+    ["select ad_id, charge_status, sum(amount)
+      from ad_credit
+      where charge_status is not null
+      group by ad_id, charge_status"]
+
+    :candidate-statuses
+    ["select candidate_status, count(id)
+      from item
+      where candidate_status is not null
+      group by candidate_status"]
+
+    :feed-sub-urls
+    ["select feed.url
+      from feed
+      join sub on sub.feed_id = feed.id
+      where sub.user_id = ?"
+     core/user-id-int]
+
+    :favorites
+    ["select user_id, item_id
+      from user_item
+      where favorited_at is not null"]
+
+    :approved-candidates
+    ["select id, url
+      from item
+      where candidate_status = 'approved'"]
+
+    :ad-recent-cost
+    ["select ad_id, sum(cost)
+      from ad_click
+      where created_at > ?
+      group by ad_id"
+     (quot (inst-ms #inst "2025") 1000)]
+
+    :ads-clicked-at
+    ["select ad_id, user_id, max(created_at)
+      from ad_click
+      group by ad_id, user_id"]
+
+    :all-n-likes
+    ["select item_id, count(id)
+      from user_item
+      where favorited_at is not null
+      group by item_id"]}})
 
 (defn q [& query]
   (jdbc/execute! (get-conn) (vec query)))
+
+(defn q-benchmark [id]
+  (apply q (get-in benchmarks [:queries id])))
 
 (def int-id->uuid
   (delay (into {}
                (map (comp vec reverse))
                (nippy/thaw-from-file "storage/id-mapping-sqlite.nippy"))))
+
+
+(comment
+
+  (q "select distinct charge_status from ad_credit")
+
+  (count (time (q-benchmark :all-n-likes)))
+  )
 
 (defn create-fixtures []
   (let [t (- (quot (inst-ms core/latest-t) 1000)
@@ -467,3 +585,4 @@
              :id-uuid (get @int-id->uuid biggest-feed)
              :real-titles item-titles
              :random-titles (repeatedly 10 #(core/random-string (+ 5 (rand-int 15))))})))))
+

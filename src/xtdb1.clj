@@ -1,8 +1,9 @@
 (ns xtdb1
   (:require
    [clojure.java.io :as io]
+   [clojure.pprint :refer [pprint]]
    [core]
-   [xtdb.api :as xt]) 
+   [xtdb.api :as xt])
   (:import
    [java.time Instant]))
 
@@ -142,7 +143,6 @@
                [(< t0 t)]]}
      (.toInstant #inst "2025")]
 
-
     :active-users-by-ad-updated
     [xt/q
      '{:find [user]
@@ -169,7 +169,7 @@
         :where ['[sub :sub/user user]
                 '[sub :sub.feed/feed feed]
                 '[feed :feed/url]
-                [(list 'get-attr 'feed :feed/synced-at (java.time.Instant/ofEpochMilli 0))
+                [(list 'get-attr 'feed :feed/synced-at (Instant/ofEpochMilli 0))
                  '[synced-at ...]]
                 '[(< synced-at t0)]]}
        user-ids
@@ -185,7 +185,149 @@
          :where [[item :item.feed/feed feed]
                  [item :item/title title]]}
        id-uuid
-       titles])}})
+       titles])
+
+    :skips
+    [xt/q
+     '{:find [item t]
+       :in [user]
+       :where [[skip :skip/user user]
+               [skip :skip/items item]
+               [skip :skip/timeline-created-at t]]}
+     core/user-id]
+
+    :favorited-urls
+    [xt/q
+     '{:find [url]
+       :where [[usit :user-item/item item]
+               [usit :user-item/favorited-at]
+               [item :item/url url]]}]
+
+    :direct-urls
+    [xt/q
+     '{:find [url]
+       :in [direct]
+       :where [[item :item/url url]
+               [item :item/doc-type direct]]}
+     :item/direct]
+
+    :recent-email-items
+    [xt/q
+     '{:find [item ingested-at]
+       :in [user t0]
+       :where [[sub :sub/user user]
+               [item :item.email/sub sub]
+               [item :item/ingested-at ingested-at]
+               [(< t0 ingested-at)]]}
+     core/user-id
+     (.toInstant #inst "2025-09-15T05:36:23Z")]
+
+    :recent-rss-items
+    [xt/q
+     '{:find [item ingested-at]
+       :in [user t0]
+       :where [[sub :sub/user user]
+               [sub :sub.feed/feed feed]
+               [item :item.feed/feed feed]
+               [item :item/ingested-at ingested-at]
+               [(< t0 ingested-at)]]}
+     core/user-id
+     (.toInstant #inst "2025-09-15T05:36:23Z")]
+
+    :recent-bookmarks
+    [xt/q
+     '{:find [item bookmarked-at]
+       :in [user t0]
+       :where [[usit :user-item/user user]
+               [usit :user-item/item item]
+               [usit :user-item/bookmarked-at bookmarked-at]
+               [(< t0 bookmarked-at)]]}
+     core/user-id
+     (.toInstant #inst "2024-09-15T05:36:23Z")]
+
+    :subscription-status
+    [xt/q
+     '{:find [(pull sub [:xt/id :sub.email/unsubscribed-at])]
+       :in [user]
+       :where [[sub :sub/user user]]}
+     core/user-id]
+
+    :latest-emails-received-at
+    [xt/q
+     '{:find [sub (max t)]
+       :in [user]
+       :where [[sub :sub/user user]
+               [item :item.email/sub sub]
+               [item :item/ingested-at t]]}
+     core/user-id]
+
+    :unique-ad-clicks
+    [xt/q
+     '{:find [ad (count-distinct user)]
+       :where [[click :ad.click/ad ad]
+               [click :ad.click/user user]]}]
+
+    :latest-ad-clicks
+    [xt/q
+     '{:find [ad (max t)]
+       :where [[click :ad.click/ad ad]
+               [click :ad.click/created-at t]]}]
+
+    :charge-amounts-by-status
+    [xt/q
+     '{:find [ad charge-status (sum amount)]
+       :where [[charge :ad.credit/ad ad]
+               [charge :ad.credit/charge-status charge-status]
+               [charge :ad.credit/amount amount]]}]
+
+    :candidate-statuses
+    [xt/q
+     '{:find [status (count item)]
+       :where [[item :item.direct/candidate-status status]]}]
+
+    :feed-sub-urls
+    [xt/q
+     '{:find [url]
+       :in [user]
+       :where [[sub :sub/user user]
+               [sub :sub.feed/feed feed]
+               [feed :feed/url url]]}
+     core/user-id]
+
+    :favorites
+    [xt/q
+     '{:find [user item]
+       :where [[usit :user-item/user user]
+               [usit :user-item/item item]
+               [usit :user-item/favorited-at]]}]
+
+    :approved-candidates
+    [xt/q
+     '{:find [(pull item [:xt/id :item/url])]
+       :where [[item :item.direct/candidate-status :approved]]}]
+
+    :ad-recent-cost
+    [xt/q
+     '{:find [ad (sum cost)]
+       :in [t]
+       :where [[click :ad.click/ad ad]
+               [click :ad.click/cost cost]
+               [click :ad.click/created-at created-at]
+               [(< t created-at)]]}
+     (.toInstant #inst "2025")]
+
+    :ads-clicked-at
+    [xt/q
+     '{:find [ad user (max t)]
+       :where [[click :ad.click/user user]
+               [click :ad.click/ad ad]
+               [click :ad.click/created-at t]]}]
+
+    :all-n-likes
+    [xt/q
+     '{:find [item (count usit)]
+       :where [[usit :user-item/item item]
+               [usit :user-item/favorited-at]]}]}})
 
 (defonce node nil)
 
@@ -200,5 +342,5 @@
   (def db (xt/db node))
   (.close node)
 
-  (count (time (q-benchmark :existing-feed-titles)))
+  (count (time (q-benchmark :all-n-likes)))
   )

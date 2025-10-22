@@ -180,7 +180,114 @@
                       where item$feed$feed = ?
                       and item$title in " (core/?s (count titles)))
                 id-uuid]
-               titles)))}})
+               titles)))
+
+    :favorited-urls
+    ["select item$url
+      from items
+      join user_items on user_item$item = items._id
+      where user_item$favorited_at is not null"]
+
+    :direct-urls
+    ["select item$url from items where item$doc_type = 'item/direct'"]
+
+    :recent-email-items
+    ["select items._id, item$ingested_at
+      from subs
+      join items on subs._id = item$email$sub
+      where sub$user = ?
+      and item$ingested_at > ?"
+     core/user-id
+     (.toInstant #inst "2025-09-15T05:36:23Z")]
+
+    :recent-rss-items
+    ["select items._id, item$ingested_at
+      from subs
+      join items on item$feed$feed = sub$feed$feed
+      where sub$user = ?
+      and sub$feed$feed is not null
+      and item$ingested_at > ?"
+     core/user-id
+     (.toInstant #inst "2025-09-15T05:36:23Z")]
+
+    :recent-bookmarks
+    ["select user_item$item, user_item$bookmarked_at
+      from user_items
+      where user_item$user = ?
+      and user_item$bookmarked_at > ?"
+     core/user-id
+     (.toInstant #inst "2024-09-15T05:36:23Z")]
+
+    :subscription-status
+    ["select _id, sub$email$unsubscribed_at
+      from subs
+      where sub$user = ?"
+     core/user-id]
+
+    :latest-emails-received-at
+    ["select subs._id, max(item$ingested_at)
+      from subs
+      join items on item$email$sub = subs._id
+      where sub$user = ?
+      group by subs._id"
+     core/user-id]
+
+    :unique-ad-clicks
+    ["select ad$click$ad, count(distinct ad$click$user)
+      from ad_clicks
+      group by ad$click$ad"]
+
+    :latest-ad-clicks
+    ["select ad$click$ad, max(ad$click$created_at)
+      from ad_clicks
+      group by ad$click$ad"]
+
+    :charge-amounts-by-status
+    ["select ad$credit$ad, ad$credit$charge_status, sum(ad$credit$amount)
+      from ad_credits
+      where ad$credit$charge_status is not null
+      group by ad$credit$ad, ad$credit$charge_status"]
+
+    :candidate-statuses
+    ["select item$direct$candidate_status, count(_id)
+      from items
+      where item$direct$candidate_status is not null
+      group by item$direct$candidate_status"]
+
+    :feed-sub-urls
+    ["select feed$url
+      from feeds
+      join subs on sub$feed$feed = feeds._id
+      where sub$user = ?"
+     core/user-id]
+
+    :favorites
+    ["select user_item$user, user_item$item
+      from user_items
+      where user_item$favorited_at is not null"]
+
+    :approved-candidates
+    ["select _id, item$url
+      from items
+      where item$direct$candidate_status = 'approved'"]
+
+    :ad-recent-cost
+    ["select ad$click$ad, sum(ad$click$cost)
+      from ad_clicks
+      where ad$click$created_at > ?
+      group by ad$click$ad"
+     (.toInstant #inst "2025")]
+
+    :ads-clicked-at
+    ["select ad$click$ad, ad$click$user, max(ad$click$created_at)
+      from ad_clicks
+      group by ad$click$ad, ad$click$user"]
+
+    :all-n-likes
+    ["select user_item$item, count(_id)
+      from user_items
+      where user_item$favorited_at is not null
+      group by user_item$item"]}})
 
 (defonce node nil)
 
@@ -197,7 +304,9 @@
   (.close conn)
   (.close node)
 
-  (count (time (q-benchmark :existing-feed-titles)))
+  (q "select item$url from items where item$doc_type = 'item/direct' limit 1")
+
+  (count (time (q-benchmark :all-n-likes)))
   (inc 3)
 
   )
