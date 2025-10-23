@@ -141,19 +141,45 @@
                                    (assoc result :id id :db-name db-name)))))
                      (group-by :id))
         results (-> results
-                    (update-vals (fn [results]
-                                   (into {"query" (:id (first results))
-                                          "xtdb2" nil
-                                          "xtdb1" nil
-                                          "postgres" nil
-                                          "sqlite" nil}
-                                         (map (fn [{:keys [db-name p50]}]
-                                                [db-name (some->> (some-> p50 (/ (* 1000 1000.0)))
-                                                                  (format "%.03f"))]))
-                                         results)))
+                    (update-vals
+                     (fn [results]
+                       (let [postgres-p50 (some (fn [{:keys [db-name p50]}]
+                                                  (when (= db-name "postgres")
+                                                    p50))
+                                                results)]
+                         (into {"query" (:id (first results))
+                                "xtdb2" nil
+                                "xtdb1" nil
+                                "postgres" nil
+                                "sqlite" nil}
+                               (map (fn [{:keys [db-name p50]}]
+                                      (let [p50-ms (some-> p50 (/ (* 1000 1000.0)))
+                                            p50-factor (when (and p50 postgres-p50)
+                                                         (/ p50 postgres-p50 1.0))]
+                                        [db-name {:p50-ms p50-ms
+                                                  :p50-factor p50-factor}])))
+                               results))))
                     vals)]
-    (println "p50 run times (ms):")
-    (print-table (sort-by #(some-> (get % "xtdb2") parse-double) #(compare %2 %1) results))))
+    (println "p50 run times:")
+    (print-table ["query"
+                  "xtdb2 (ms)"
+                  "xtdb2 (factor)"
+                  "xtdb1 (ms)"
+                  "xtdb1 (factor)"
+                  "sqlite (ms)"
+                  "sqlite (factor)"
+                  "postgres (ms)"]
+                 (->> results
+                      (sort-by #(get-in % ["xtdb2" :p50-ms]) #(compare %2 %1))
+                      (mapv (fn [row]
+                              (into {}
+                                    (mapcat (fn [[k v]]
+                                              (if (= k "query")
+                                                [[k v]]
+                                                [[(str k " (ms)") (some->> (:p50-ms v) (format "%.03f"))]
+                                                 [(str k " (factor)")
+                                                  (some->> (:p50-factor v) (format "%.01f"))] ])))
+                                    row)))))))
 
 (defn -main [command & args]
   (apply println "Running" command args)
